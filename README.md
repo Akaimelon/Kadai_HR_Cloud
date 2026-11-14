@@ -38,6 +38,26 @@ Dockerの基本的な概念については、以下のリンクを参考にし�
    ```
 6. **ブラウザからlocalhostにアクセス**
 
+## 開発環境の準備
+
+### Tailwind CSS のビルド
+画面のスタイルは Tailwind CSS で書きます。ビルド結果の `public/assets/css/app.css` はコミット済みなので、画面を表示するだけならこの手順は不要です。views や js のクラス名を変えたときは、ビルドし直して `app.css` も一緒にコミットしてください（理由は `docs/adr/0004-tailwind-standalone-cli-in-container.md`）。
+
+1. **CLIをダウンロード**（初回だけ。リポジトリ直下で実行）
+   Node.js が要らないスタンドアロンCLIの、Linux用の実行ファイル（約100MB）を `tailwind/tailwindcss` に置きます。appコンテナの中で動かすので、自分のPCのOSに関係なくLinux用を使います。`.gitignore` で除外しているのでコミットされません。
+   ```bash
+   curl -fsSL -o tailwind/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/tailwindcss-linux-x64
+   ```
+
+2. **appコンテナの中でビルド**（`docker` ディレクトリで実行。コンテナは起動しておく）
+   ```bash
+   docker compose exec -w /var/www/html/my_fuel_project app sh -c "chmod +x tailwind/tailwindcss && ./tailwind/tailwindcss -i tailwind/input.css -o public/assets/css/app.css --minify"
+   ```
+   - Dockerfile に WORKDIR がないため、`-w` でプロジェクトのフォルダを指定します
+   - Git Bash では `-w` のパスが書き換えられてしまうので、先頭に `MSYS_NO_PATHCONV=1 ` を付けます
+
+クラス名を探す場所は `tailwind/input.css` の `@source` で指定しています（`fuel/app/views`、`public/assets/js`（`bootstrap*.js` を除く）、`fuel/app/config/kanban.php`）。
+
 ## PHP周りのバージョン
 - **PHP**: 7.3
 - **FuelPHP**: 1.8

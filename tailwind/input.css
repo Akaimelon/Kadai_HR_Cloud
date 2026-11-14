@@ -1,0 +1,6 @@
+@import "tailwindcss" source(none);
+
+@source "../fuel/app/views";
+@source "../public/assets/js";
+@source not "../public/assets/js/bootstrap*.js";
+@source "../fuel/app/config/kanban.php";
