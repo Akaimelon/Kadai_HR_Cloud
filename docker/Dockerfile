@@ -55,6 +55,12 @@ RUN mkdir /var/log/fuel /var/cache/fuel && \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
+# PHPUnitをインストール（php oil test で使う）
+# FuelPHP 1.8 の TestCase は PHPUnit_Framework_TestCase を継承するため、それがある5系にする
+# oil は PATH 上の phpunit を phar として見つけるので、/usr/local/bin に置く
+RUN curl -fsSL -o /usr/local/bin/phpunit https://phar.phpunit.de/phpunit-5.7.27.phar && \
+    chmod +x /usr/local/bin/phpunit
+
 # Oilをインストール
 RUN mkdir /var/www/html/my_fuel_project && \
     cd /var/www/html/my_fuel_project && \
