@@ -1,0 +1,9 @@
+# 暗号化の鍵
+/fuel/app/config/crypt.php
+
+# マイグレーションの実行記録
+/fuel/app/config/development/migrations.php
+
+# エラーログ
+/fuel/app/logs/*
+!/fuel/app/logs/.gitkeep
