@@ -10,8 +10,8 @@
 | --- | --- | --- | --- |
 | 1 | サーバサイド言語はPHPで、フレームワークのFuelphpを使用すること | サーバ側はFuelPHPのMVCで実装する | fuel/app/ 全体 |
 | 2 | beforeメソッドを使う | 基底コントローラを画面用のController_Base（Controller_Templateを継承）とAPI用のController_Api_Base（Controller_Restを継承）の2つ作り、それぞれのbefore()でログイン確認とCSRF確認を行う。確認処理は1か所にまとめて両方から呼ぶ。未ログイン時は画面ならログイン画面へリダイレクト、APIなら401を返す | controller/base.php、controller/api/base.php |
-| 3 | configファイルをカスタマイズする | db.php（接続先）、session.php（Cookie属性）、routes.php（URL設計）を変更し、独自のkanban.php（status_idごとの表示色をTailwindのクラス名で持つ。選考ステージの名前と順番はDBのstatusesが持ち、configは見た目だけを持つ）を追加する | config/ |
-| 4 | sessionやcookieを使う | ログイン状態をSessionにuser_idで保持し、ログイン成功時にSession::rotate()で再発行する。セッションIDはCookieで受け渡し、Cookieの属性はsession.phpで設定する | controller/auth.php、controller/base.php、config/session.php |
+| 3 | configファイルをカスタマイズする | db.php（接続先）、session.php（セッションの保存先）、config.php（Cookie属性とCSRFトークンの有効期限）、routes.php（URL設計）を変更し、独自のkanban.php（status_idごとの表示色をTailwindのクラス名で持つ。選考ステージの名前と順番はDBのstatusesが持ち、configは見た目だけを持つ）を追加する | config/ |
+| 4 | sessionやcookieを使う | ログイン状態をSessionにuser_idで保持し、ログイン成功時にSession::destroy()とSession::create()でセッションを作り直す（ADR 0001）。セッションIDはCookieで受け渡し、Cookieの属性はconfig.phpのcookieで設定する（ADR 0003） | controller/auth.php、controller/base.php、config/session.php、config/config.php、classes/cookie.php |
 | 5 | ネームスペースを使う（実装していなくても、目的と使い方を口頭で説明できればOK） | カード移動の並び替え処理をKanban名前空間のクラス Kanban\CardMover に切り出す | classes/kanban/cardmover.php |
 | 6 | \（バックスラッシュ）を使ったグローバルな名前空間へのアクセスについて理解している | Kanban名前空間内からは `\DB` や `\Session` のように先頭の`\`を付けてコアクラスを呼ぶ | classes/kanban/cardmover.php |
 | 7 | データベースとのやり取りはDBクラスを使うこと | 全クエリをDB::select / insert / update / delete のクエリビルダで書く。ORMは使わない | model/ |
@@ -84,7 +84,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | データベース | MySQL 8.0（InnoDB、文字コードutf8mb4） | FuelPHPのDBクラスが標準で対応し、外部キー制約とトランザクションが使える。utf8では絵文字や一部の漢字を保存できないため、db.phpのcharsetをutf8mb4に変える |
 | 認証 | 自前実装（Session + password_hash） | Authパッケージを使わず、DBクラスとSessionで書くほうが課題条件の説明がしやすい |
 | フロントエンド | knockout.js | 課題条件。カードの配列をobservableArrayで持てば、移動後の再描画を自動で行える |
-| スタイリング | Tailwind CSS（スタンドアロンCLIでビルド） | knockoutのcssバインディングでクラスを付け外しするだけで、ドラッグ中などの見た目を切り替えられる。Node.jsなしでビルドでき、使ったクラスだけを出力するのでCSSが小さく済む。クラス名はJSで組み立てず、省略せずに書く |
+| スタイリング | Tailwind CSS（スタンドアロンCLIでビルド） | knockoutのcssバインディングでクラスを付け外しするだけで、ドラッグ中などの見た目を切り替えられる。Node.jsなしでビルドでき、使ったクラスだけを出力するのでCSSが小さく済む。クラス名はJSで組み立てず、省略せずに書く。ビルドの方法はADR 0004 |
 | ドラッグ&ドロップ | HTML5 Drag and Drop API | 追加ライブラリなしでknockoutのeventバインディングから扱える |
 | 非同期通信 | fetch API（JSON） | ブラウザ標準で、jQueryを入れずに済む |
 | 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる |
@@ -228,7 +228,7 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 
 ### ログイン
 
-ログイン成功時にセッションIDを再発行してからuser_idを保存し、以降の画面はbefore()がそのuser_idを見て通すかどうかを決める。
+ログイン成功時にセッションを破棄して作り直してからuser_idを保存し、以降の画面はbefore()がそのuser_idを見て通すかどうかを決める。
 
 ```mermaid
 sequenceDiagram
@@ -242,14 +242,15 @@ sequenceDiagram
     C-->>B: フォーム（CSRFトークン入り）
     U->>B: メールアドレス・パスワードを送信
     B->>C: POST /auth/login
-    C->>C: Security::check_token()
+    C->>C: hash_equals(Security::fetch_token(), 送られたトークン)
     C->>M: find_by_email(小文字化したemail)
     M->>D: DB::select()->from('users')->where(...)
     D-->>M: ユーザー行
     M-->>C: ユーザー情報
     C->>C: password_verify(入力, ハッシュ)
     alt 認証成功
-        C->>C: Session::rotate()
+        C->>C: Session::destroy()
+        C->>C: Session::create()
         C->>C: Session::set('user_id', id)
         C-->>B: 302 /boards（CookieにセッションID）
     else 認証失敗
@@ -298,12 +299,12 @@ sequenceDiagram
 | --- | --- | --- |
 | SQLインジェクション | DBクラスのクエリビルダで値をバインドし、SQLを文字列連結しない | 全Model |
 | XSS | ViewのエスケープとknockoutのtextバインディングでHTMLとして出力しない。htmlバインディングは使わない | views、boards.js、board.js |
-| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、board.js・boards.jsがfetchのたびに`X-CSRF-Token`ヘッダで送る。どちらもbefore()でSecurity::check_token()に渡して検証し、不一致なら403 | Controller_Base::before()、Controller_Api_Base::before()、views/template.php |
-| セッション固定化 | ログイン成功時にSession::rotate()でセッションIDを再発行する | Controller_Auth::post_login |
+| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、board.js・boards.jsがfetchのたびに`X-CSRF-Token`ヘッダで送る。どちらもbefore()で`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php |
+| セッション固定化 | ログイン成功時にSession::destroy()→Session::create()でセッションを作り直してからuser_idを保存する。Session::rotate()はfileドライバで古いIDに新しいIDへの転送先を残すため、ログイン前に仕込まれたIDでもログイン後のセッションに入れてしまう（ADR 0001） | Controller_Auth::post_login |
 | パスワード漏えい | password_hashで保存し、password_verifyで照合する。平文はログにも残さない | Model_User |
 | アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す | Controller_Auth::post_login |
 | 他者リソースへのアクセス | 判定をModel_Board::can_access()にまとめ、すべての取得・更新でboards.owner_idとログイン中のuser_idを条件に入れる | 全Model |
-| Cookieの盗用 | session.phpでHttpOnlyとSameSiteを有効にし、HTTPS環境ではSecureも付ける | config/session.php |
+| Cookieの盗用 | config.phpのcookieでHttpOnlyとSameSite=Laxを有効にし、HTTPS環境ではSecureも付ける。FuelPHP 1.8のCookieクラスはSameSiteを渡せないため、classes/cookie.phpでCookie::set()を上書きし、bootstrap.phpでコアのCookieと差し替える。session.phpはfileドライバにして、CookieにはセッションIDだけを入れる（ADR 0003） | config/config.php、classes/cookie.php、bootstrap.php、config/session.php |
 | 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
 | 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数から読む | config/db.php |
 
@@ -345,7 +346,9 @@ kanban-todo/
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
 │   └── app/
+│       ├── bootstrap.php          # Cookieクラスの差し替え
 │       ├── classes/
+│       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
 │       │   ├── controller/
 │       │   │   ├── base.php       # 画面用の基底。before()でログイン・CSRF確認
 │       │   │   ├── auth.php       # 登録・ログイン・ログアウト
@@ -361,6 +364,7 @@ kanban-todo/
 │       │   └── kanban/
 │       │       └── cardmover.php  # namespace Kanban。並び替え処理
 │       ├── config/
+│       │   ├── config.php         # Cookie属性・CSRFトークンの有効期限
 │       │   ├── db.php
 │       │   ├── session.php
 │       │   ├── routes.php
