@@ -58,6 +58,34 @@ Dockerの基本的な概念については、以下のリンクを参考にし�
 
 クラス名を探す場所は `tailwind/input.css` の `@source` で指定しています（`fuel/app/views`、`public/assets/js`（`bootstrap*.js` を除く）、`fuel/app/config/kanban.php`）。
 
+### テスト（PHPUnit）
+テストは `php oil test` で実行します。PHPUnit 5.7 は appコンテナのイメージに入っています（`docker/Dockerfile`）。FuelPHP 1.8 の `TestCase` が `PHPUnit_Framework_TestCase` を継承しているため、それがある5系を使います。テストは `fuel/app/tests/` に置き、`fuel/app/phpunit.xml` の設定でアプリのテストだけを実行します。
+
+以下のコマンドは `docker` ディレクトリで実行します。Git Bash では先頭に `MSYS_NO_PATHCONV=1 ` を付けます。
+
+1. **appコンテナを作り直す**（PHPUnit が入る前にコンテナを作った人だけ。`docker compose exec app phpunit --version` で確認できます）
+   ```bash
+   docker compose build app
+   docker compose up -d app
+   ```
+
+2. **テスト用DBを作る**（初回だけ）
+   テストは `FUEL_ENV=test` で動き、`fuel/app/config/test/db.php` のテスト用DB `fuelphp_test` に接続します。開発用DBのデータを消さないよう、別のDBにしています。
+   ```bash
+   docker compose exec db mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS fuelphp_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+   ```
+
+3. **テスト用DBにテーブルを作る**（初回と、マイグレーションを追加したとき）
+   ```bash
+   docker compose exec -e FUEL_ENV=test -w /var/www/html/my_fuel_project app php oil refine migrate
+   ```
+
+4. **テストを実行する**
+   ```bash
+   docker compose exec -w /var/www/html/my_fuel_project app php oil test
+   ```
+   最後に `OK (... tests, ... assertions)` と出れば成功です。失敗したテストがあると、終了コードが1になります。
+
 ## PHP周りのバージョン
 - **PHP**: 7.3
 - **FuelPHP**: 1.8

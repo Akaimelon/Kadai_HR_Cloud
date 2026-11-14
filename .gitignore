@@ -3,6 +3,7 @@
 
 # マイグレーションの実行記録
 /fuel/app/config/development/migrations.php
+/fuel/app/config/test/migrations.php
 
 # エラーログ
 /fuel/app/logs/*

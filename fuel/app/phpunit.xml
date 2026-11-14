@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+	php oil test が使う設定。fuel/core/phpunit.xml を元に、アプリのテストだけを実行するようにした。
+	（core と packages のテストは FuelPHP 本体のもので、この課題では実行しない）
+-->
+<phpunit colors="true" stopOnFailure="false" bootstrap="../core/bootstrap_phpunit.php">
+	<php>
+		<server name="doc_root" value="../../"/>
+		<server name="app_path" value="fuel/app"/>
+		<server name="core_path" value="fuel/core"/>
+		<server name="package_path" value="fuel/packages"/>
+		<server name="vendor_path" value="fuel/vendor"/>
+		<server name="FUEL_ENV" value="test"/>
+	</php>
+	<testsuites>
+		<testsuite name="app">
+			<directory suffix=".php">../app/tests</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>

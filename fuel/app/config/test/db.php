@@ -7,10 +7,19 @@
 
 return array(
 	'default' => array(
+		'type'        => 'mysqli',
 		'connection'  => array(
-			'dsn'        => 'mysql:host=localhost;dbname=fuel_test',
-			'username'   => 'fuel_app',
-			'password'   => 'super_secret_password',
+			'hostname'   => 'db',
+			'database'   => 'fuelphp_test',
+			'username'   => 'root',
+			'password'   => 'root',
+			'persistent' => false,
 		),
+		'identifier'   => '`',
+		'table_prefix' => '',
+		'charset'      => 'utf8mb4',
+		'collation'    => 'utf8mb4_unicode_ci',
+		'enable_cache' => true,
+		'profiling'    => false,
 	),
 );
