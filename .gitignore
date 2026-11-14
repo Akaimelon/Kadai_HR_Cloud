@@ -7,3 +7,6 @@
 # エラーログ
 /fuel/app/logs/*
 !/fuel/app/logs/.gitkeep
+
+# Tailwind CSS のスタンドアロンCLI（各自ダウンロードする）
+/tailwind/tailwindcss
