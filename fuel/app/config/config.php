@@ -119,6 +119,12 @@ return array(
 		// 'csrf_auto_token'          => false,
 		// 'csrf_token_key'           => 'fuel_csrf_token',
 		// 'csrf_expiration'          => 0,
+		/**
+		 * CSRFトークンを24時間使い続ける
+		 * 0（既定）だとリクエストのたびにトークンが作り直され、
+		 * 複数タブで開いたときや、画面表示のあとにAPIを呼んだときに古いトークンが弾かれるため
+		 */
+		'csrf_expiration'  => 86400,
 
 		/**
 		 * A salt to make sure the generated security tokens are not predictable
@@ -200,6 +206,19 @@ return array(
 		// Only transmit cookies over HTTP, disabling Javascript access
 		// 'http_only'   => false,
 	// ),
+	/**
+	 * Cookieの既定の属性
+	 *
+	 * http_only : JavaScriptからCookieを読めなくする。セッションCookieには効かないため、
+	 *             config/session.php の cookie_http_only でも指定している
+	 * samesite  : 別サイトからのPOSTにCookieを付けない（CSRFトークンに重ねる対策）
+	 *             FuelPHP 1.8 の Cookie クラスにはないため、classes/cookie.php で追加している
+	 */
+	'cookie' => array(
+		'secure'    => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+		'http_only' => true,
+		'samesite'  => 'Lax',
+	),
 
 	/**
 	 * Validation settings
