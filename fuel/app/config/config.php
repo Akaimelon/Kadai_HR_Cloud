@@ -119,6 +119,12 @@ return array(
 		// 'csrf_auto_token'          => false,
 		// 'csrf_token_key'           => 'fuel_csrf_token',
 		// 'csrf_expiration'          => 0,
+		/**
+		 * CSRFトークンを24時間使い続ける
+		 * 0（既定）だとリクエストのたびにトークンが作り直され、
+		 * 複数タブで開いたときや、画面表示のあとにAPIを呼んだときに古いトークンが弾かれるため
+		 */
+		'csrf_expiration'  => 86400,
 
 		/**
 		 * A salt to make sure the generated security tokens are not predictable
