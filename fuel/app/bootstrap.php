@@ -5,6 +5,8 @@ require COREPATH.'bootstrap.php';
 \Autoloader::add_classes(array(
 	// Add classes you want to override here
 	// Example: 'View' => APPPATH.'classes/view.php',
+	// SameSite属性を付けるため、Cookie クラスを変更
+	'Cookie' => APPPATH.'classes/cookie.php',
 ));
 
 // Register the autoloader
