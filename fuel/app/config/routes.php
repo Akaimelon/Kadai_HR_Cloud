@@ -1,16 +1,14 @@
 <?php
 return array(
-	// トップページはボード一覧。未ログインならログイン画面にリダイレクトされる
+	// 未ログインなら Controller_Base がログイン画面にリダイレクトする
 	'_root_'  => 'boards/index',
 	'_404_'   => 'welcome/404',    // The main 404 route
 
 	'hello(/:name)?' => array('welcome/hello', 'name' => 'hello'),
 
-	// 登録・ログイン・ログアウト（GETとPOSTで Controller_Auth の get_〜 / post_〜 に分かれる）
+	// 以下は書かなくても URL からコントローラに振り分けられるが、どの URL があるかを一覧するために書く
 	'auth/register' => 'auth/register',
 	'auth/login'    => 'auth/login',
 	'auth/logout'   => 'auth/logout',
-
-	// ボード一覧
 	'boards' => 'boards/index',
 );

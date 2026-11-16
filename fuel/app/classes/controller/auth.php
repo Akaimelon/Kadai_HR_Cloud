@@ -1,9 +1,6 @@
 <?php
 /**
- * 登録・ログイン・ログアウト。
- *
- * 登録とログインはログインしていなくても開ける。POSTのCSRFトークンは
- * Controller_Base::before() が確認するので、ここでは確認しない。
+ * POSTのCSRFトークンは Controller_Base::before() が確認するので、ここでは確認しない。
  */
 class Controller_Auth extends Controller_Base
 {
@@ -13,7 +10,6 @@ class Controller_Auth extends Controller_Base
 	{
 		parent::before();
 
-		// ログイン済みで登録・ログイン画面を開いたら、ボード一覧へ
 		if (in_array($this->request->action, $this->public_actions, true) and Guard::user_id() !== null)
 		{
 			\Response::redirect('boards');
@@ -75,8 +71,6 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * 登録とログインで共通の入力チェック
-	 *
 	 * @return Validation
 	 */
 	protected function validation()
@@ -101,7 +95,7 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * 入力フォームを表示する。エラー時は入力したメールアドレスを残す（パスワードは残さない）
+	 * エラー時にパスワードを入力欄に戻さないのは、パスワードを画面のHTMLに書き出さないため
 	 *
 	 * @param string $view
 	 * @param string $title
