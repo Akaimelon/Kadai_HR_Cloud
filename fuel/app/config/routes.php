@@ -11,4 +11,6 @@ return array(
 	'auth/login'    => 'auth/login',
 	'auth/logout'   => 'auth/logout',
 	'boards' => 'boards/index',
+
+	'api/boards' => 'api/boards/index',
 );
