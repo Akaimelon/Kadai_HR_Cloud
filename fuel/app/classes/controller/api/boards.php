@@ -11,6 +11,61 @@ class Controller_Api_Boards extends Controller_Api_Base
 
 	public function post_index()
 	{
+		$title = $this->validated_title();
+		$id = Model_Board::create(Guard::user_id(), $title);
+
+		return $this->response(array(
+			'board' => $this->to_json(array('id' => $id, 'title' => $title, 'card_count' => 0)),
+		), 201);
+	}
+
+	/**
+	 * @param string $id
+	 */
+	public function put_item($id)
+	{
+		$this->ensure_accessible($id);
+		$title = $this->validated_title();
+		Model_Board::rename($id, Guard::user_id(), $title);
+
+		return $this->response(array(
+			'board' => array('id' => (int) $id, 'title' => $title),
+		));
+	}
+
+	/**
+	 * @param string $id
+	 */
+	public function delete_item($id)
+	{
+		$this->ensure_accessible($id);
+		Model_Board::delete($id, Guard::user_id());
+
+		return $this->response(array(), 204);
+	}
+
+	/**
+	 * 他人のボードにも404を返すのは、そのIDのボードがあること自体を知らせないため（設計書5章）
+	 *
+	 * @param  string $id
+	 * @throws HttpJsonException
+	 */
+	protected function ensure_accessible($id)
+	{
+		if ( ! Model_Board::can_access($id, Guard::user_id()))
+		{
+			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
+		}
+	}
+
+	/**
+	 * 作成と名前変更で、ボード名の決まりを同じにするため1か所にまとめる
+	 *
+	 * @return string  前後の空白を除いたボード名
+	 * @throws HttpJsonException  入力エラーのとき（422）
+	 */
+	protected function validated_title()
+	{
 		$val = \Validation::forge();
 		$val->add('title', 'ボード名')
 			->add_rule('trim')
@@ -21,15 +76,10 @@ class Controller_Api_Boards extends Controller_Api_Base
 
 		if ( ! $val->run(array('title' => (string) \Input::json('title', ''))))
 		{
-			return $this->response(array('error' => implode("\n", $val->error_message())), 422);
+			throw new HttpJsonException(422, implode("\n", $val->error_message()));
 		}
 
-		$title = $val->validated('title');
-		$id = Model_Board::create(Guard::user_id(), $title);
-
-		return $this->response(array(
-			'board' => $this->to_json(array('id' => $id, 'title' => $title, 'card_count' => 0)),
-		), 201);
+		return $val->validated('title');
 	}
 
 	/**
