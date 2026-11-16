@@ -81,15 +81,19 @@ class Controller_Auth extends Controller_Base
 			->add_rule('required')
 			->add_rule('valid_email')
 			->add_rule('max_length', 255);
-		// bcrypt は72バイトより後ろを無視するため、それより長いパスワードは受け付けない
+		// bcrypt は72バイトより後ろを無視するため、それより長いパスワードは受け付けない。
+		// max_length は文字数で数え、全角1文字（3バイト）も1と数えるので使わない
 		$val->add('password', 'パスワード')
 			->add_rule('required')
-			->add_rule('max_length', 72);
+			->add_rule(array('max_bytes' => function ($password) {
+				return strlen($password) <= 72;
+			}));
 
 		$val->set_message('required', ':labelを入力してください');
 		$val->set_message('valid_email', ':labelの形式が正しくありません');
 		$val->set_message('min_length', ':labelは:param:1文字以上で入力してください');
 		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
+		$val->set_message('max_bytes', ':labelは半角72文字以内（全角は24文字以内）で入力してください');
 
 		return $val;
 	}

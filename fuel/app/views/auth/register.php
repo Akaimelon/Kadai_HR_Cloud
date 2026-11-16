@@ -6,7 +6,7 @@
 		<input type="email" id="email" name="email" value="<?php echo $email; ?>" maxlength="255" required autofocus>
 	</p>
 	<p>
-		<label for="password">パスワード（8〜72文字）</label><br>
+		<label for="password">パスワード（8文字以上、半角72文字以内）</label><br>
 		<input type="password" id="password" name="password" minlength="8" maxlength="72" required>
 	</p>
 	<p><button type="submit">登録する</button></p>
