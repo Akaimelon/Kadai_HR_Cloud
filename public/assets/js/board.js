@@ -3,6 +3,7 @@
 
 	const root = document.getElementById('board');
 	const apiUrl = root.getAttribute('data-api-url');
+	const cardApiUrl = root.getAttribute('data-card-api-url');
 	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 	/**
@@ -39,8 +40,13 @@
 
 	function CardItem(data) {
 		this.id = data.id;
+		this.statusId = data.status_id;
 		this.title = ko.observable(data.title);
 		this.memo = ko.observable(data.memo);
+		this.editing = ko.observable(false);
+		// 保存に失敗したとき、表示中の内容を変えずに入力だけを残すため、title・memo とは別に持つ
+		this.draftTitle = ko.observable('');
+		this.draftMemo = ko.observable('');
 		// created_at は「2026-11-17 12:34:56」の形なので、先頭10文字が日付になる
 		this.createdOn = data.created_at.slice(0, 10).replace(/-/g, '/');
 	}
@@ -117,6 +123,45 @@
 					column.cards.push(new CardItem(data.card));
 					column.adding(false);
 				}
+			);
+		};
+
+		function cardUrl(card) {
+			return cardApiUrl + '/' + card.id;
+		}
+
+		self.startEdit = function (card) {
+			card.draftTitle(card.title());
+			card.draftMemo(card.memo() || '');
+			card.editing(true);
+		};
+
+		self.cancelEdit = function (card) {
+			card.editing(false);
+		};
+
+		self.saveCard = function (card) {
+			save(
+				function () {
+					return callApi('PUT', cardUrl(card), { title: card.draftTitle(), memo: card.draftMemo() });
+				},
+				function (data) {
+					// 前後の空白を除くなど、サーバーが整えた値を表示する
+					card.title(data.card.title);
+					card.memo(data.card.memo);
+					card.editing(false);
+				}
+			);
+		};
+
+		self.deleteCard = function (card) {
+			const message = '「' + card.title() + '」のカードを削除します。よろしいですか？';
+			if (self.saving() || !window.confirm(message)) {
+				return;
+			}
+			save(
+				function () { return callApi('DELETE', cardUrl(card)); },
+				function () { self.columns[card.statusId].cards.remove(card); }
 			);
 		};
 	}
