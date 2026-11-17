@@ -8,7 +8,43 @@
 	const boardsUrl = root.getAttribute('data-boards-url');
 	// 選考ステージの名前と色（id・title・dot・chip）。モーダルに出すため、サーバーが出したものを使う
 	const statuses = JSON.parse(root.getAttribute('data-statuses'));
-	const callApi = KanbanUi.callApi;
+
+	// 応募者名の上限。入力チェックと同じ値をサーバーから受け取り、JSに数を書かない
+	const cardTitleMax = Number(root.getAttribute('data-card-title-max'));
+	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+	/**
+	 * 失敗はどれも、画面にそのまま出せるメッセージで reject する。
+	 * 呼び出し側が、通信エラーか入力エラーかを区別せずに error.message を表示できるようにするため
+	 */
+	function callApi(method, url, body) {
+		const options = {
+			method: method,
+			credentials: 'same-origin',
+			headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }
+		};
+		if (body !== undefined) {
+			options.headers['Content-Type'] = 'application/json';
+			options.body = JSON.stringify(body);
+		}
+
+		return fetch(url, options)
+			.catch(function () {
+				throw new Error('通信に失敗しました。ネットワークを確認してください');
+			})
+			.then(function (response) {
+				return response.json()
+					// サーバーのエラー画面（HTML）が返ってきたときも、同じメッセージで扱うため
+					.catch(function () { return {}; })
+					.then(function (data) {
+						if (!response.ok) {
+							throw new Error(data.error || 'エラーが発生しました。時間をおいてもう一度お試しください');
+						}
+						return data;
+					});
+			});
+	}
+
 
 	function CardItem(data) {
 		const self = this;
@@ -45,6 +81,29 @@
 		self.error = ko.observable('');
 		self.status = ko.pureComputed(function () {
 			return self.column().status;
+		});
+
+		// 作成と編集で同じモーダルを使い、文言だけを切り替える
+		self.isEdit = ko.pureComputed(function () {
+			return self.card() !== null;
+		});
+		self.heading = ko.pureComputed(function () {
+			return self.isEdit() ? 'カードを編集' : 'カードを作成';
+		});
+		self.submitLabel = ko.pureComputed(function () {
+			return self.isEdit() ? '保存' : '作成';
+		});
+		self.statusLabel = ko.pureComputed(function () {
+			return self.isEdit() ? '選考ステージ' : '追加する列';
+		});
+		// 選考ステージはモーダルでは変えられないので、変え方と、どの列に入るかを添える
+		self.statusHint = ko.pureComputed(function () {
+			return self.isEdit()
+				? 'ボード上でカードをドラッグして変更します'
+				: '押した「カードを追加」の列に入ります。上部のボタンからは' + firstColumn.status.title + 'に入ります';
+		});
+		self.titleCounter = ko.pureComputed(function () {
+			return self.title().length + ' / ' + cardTitleMax;
 		});
 	}
 
