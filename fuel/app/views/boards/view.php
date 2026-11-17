@@ -14,8 +14,9 @@
 				<section data-status-id="<?php echo $column['id']; ?>" data-bind="with: columns[<?php echo $column['id']; ?>]"
 					class="flex min-h-96 flex-col rounded-lg border border-gray-200 bg-gray-100">
 					<h2 class="rounded-t-lg px-3 py-2 text-sm font-bold <?php echo $column['class']; ?>"><?php echo $column['title']; ?></h2>
-					<?php // カードの上だけでなく列の空いているところにも落とせるよう、列の本体でドロップを受ける ?>
-					<div data-bind="event: { dragover: $root.dragOver, dragleave: $root.dragLeave, drop: $root.drop },
+					<?php // カードの上だけでなく列の空いているところにも落とせるよう、列の本体でドロップを受ける。
+						// dragenter も取り消すのは、別の要素に入ってすぐ離すと、次の dragover が来る前で drop が起きないため ?>
+					<div data-bind="event: { dragenter: $root.dragOver, dragover: $root.dragOver, dragleave: $root.dragLeave, drop: $root.drop },
 							css: { 'bg-blue-50': $root.isDropColumn($data) }"
 						class="flex-1 space-y-2 rounded-b-lg p-2">
 						<?php // 応募者名とメモは利用者の入力なので、HTMLとして出さないよう text バインディングで表示する ?>
