@@ -18,7 +18,8 @@
 		<li class="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
 			<!-- ko ifnot: editing -->
 				<div class="flex flex-wrap items-center gap-2">
-					<span data-bind="text: title" class="font-medium break-all"></span>
+					<a data-bind="text: title, attr: { href: '<?php echo Uri::create('boards'); ?>/' + id }"
+						class="font-medium break-all text-blue-700 hover:underline"></a>
 					<span class="text-sm text-gray-500">（応募 <span data-bind="text: cardCount"></span> 件）</span>
 					<span class="ml-auto flex gap-1">
 						<button type="button" data-bind="click: $parent.startEdit, disable: $parent.saving"
