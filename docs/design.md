@@ -82,7 +82,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | サーバサイド | PHP 7.3 + FuelPHP 1.8系 | 課題条件。before()、config、Session、DBクラスがフレームワーク標準で揃う |
 | DBアクセス | FuelPHPのDBクラス（クエリビルダ） | 課題条件。値はバインドされるためSQLインジェクションを防ぎやすい |
 | データベース | MySQL 8.0（InnoDB、文字コードutf8mb4） | FuelPHPのDBクラスが標準で対応し、外部キー制約とトランザクションが使える。utf8では絵文字や一部の漢字を保存できないため、db.phpのcharsetをutf8mb4に変える |
-| 認証 | 自前実装（Session + password_hash） | Authパッケージを使わず、DBクラスとSessionで書くほうが課題条件の説明がしやすい |
+| 認証 | 自前実装（Session + password_hash） | FuelPHPのAuthパッケージ（SimpleAuth）は、このアプリの要件を満たすには中心の処理を上書きする必要があり、便利さが残らない。ログイン時に中でSession::rotate()を呼ぶためセッション固定化を防げず（ADR 0001）、パスワードは全ユーザー共通のソルトで保存してpassword_verifyを使えない。usersテーブルにも使わない列が増える。Authの利点（remember me、権限のグループなど）は要件にない。自前実装なら課題条件No.4も自分で書いたSession::set()で説明できる（ADR 0005） |
 | フロントエンド | knockout.js | 課題条件。カードの配列をobservableArrayで持てば、移動後の再描画を自動で行える |
 | スタイリング | Tailwind CSS（スタンドアロンCLIでビルド） | knockoutのcssバインディングでクラスを付け外しするだけで、ドラッグ中などの見た目を切り替えられる。Node.jsなしでビルドでき、使ったクラスだけを出力するのでCSSが小さく済む。クラス名はJSで組み立てず、省略せずに書く。ビルドの方法はADR 0004 |
 | ドラッグ&ドロップ | HTML5 Drag and Drop API | 追加ライブラリなしでknockoutのeventバインディングから扱える |
