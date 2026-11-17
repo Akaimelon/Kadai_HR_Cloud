@@ -49,7 +49,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 
 | 機能 | 内容 | 優先度 |
 | --- | --- | --- |
-| ユーザー登録・ログイン | 登録、ログイン、ログアウト。未ログインでは全画面を表示しない | 必須 |
+| ユーザー登録・ログイン | 登録、ログイン、ログアウト。未ログインでは全画面を表示しない。パスワードは8文字以上、半角72文字以内（全角は24文字以内）。bcryptは72バイトより後ろを無視するため、文字数ではなくバイト数で上限を判定する | 必須 |
 | ボード管理 | 作成・一覧・名前変更・削除（物理削除。実行前に「応募N件も削除されます」と件数入りの確認ダイアログを出す）。ボード一覧画面もページ遷移なしで操作する | 必須 |
 | カード管理 | 作成・編集・削除（物理削除。実行前に確認ダイアログを出す）。各列の「＋追加」からどの列にも作成でき、列の一番下に追加される | 必須 |
 | 列 | 書類選考 / 一次面接 / 最終面接 / 内定 / 不採用・辞退 の5列で固定。選考が終わった応募は削除せず「不採用・辞退」列に移して記録を残す | 必須 |
@@ -88,7 +88,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | ドラッグ&ドロップ | HTML5 Drag and Drop API | 追加ライブラリなしでknockoutのeventバインディングから扱える |
 | 非同期通信 | fetch API（JSON） | ブラウザ標準で、jQueryを入れずに済む |
 | 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる |
-| テスト | PHPUnit（oil test） | FuelPHPに組み込みのテストランナーで動く |
+| テスト | PHPUnit 5.7（oil test） | FuelPHPに組み込みのテストランナーで動く。FuelPHP 1.8のTestCaseはPHPUnit_Framework_TestCaseを継承しており、そのクラスがない6系以降では動かないため5.7にする。appコンテナのイメージにpharで入れる |
 | ソース管理 | GitHub | 課題条件。CI（GitHub Actions）は課題条件に含まれず、1人開発で手元のテストが動くため作らない（7章） |
 
 ## 3. 構成図
@@ -302,15 +302,15 @@ sequenceDiagram
 | CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、board.js・boards.jsがfetchのたびに`X-CSRF-Token`ヘッダで送る。どちらもbefore()で`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php |
 | セッション固定化 | ログイン成功時にSession::destroy()→Session::create()でセッションを作り直してからuser_idを保存する。Session::rotate()はfileドライバで古いIDに新しいIDへの転送先を残すため、ログイン前に仕込まれたIDでもログイン後のセッションに入れてしまう（ADR 0001） | Controller_Auth::post_login |
 | パスワード漏えい | password_hashで保存し、password_verifyで照合する。平文はログにも残さない | Model_User |
-| アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す | Controller_Auth::post_login |
+| アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す。登録画面の「すでに登録されています」からは登録済みのメールアドレスがわかるが、防ぐにはメールでの本人確認が要るため、課題の範囲外として対応しない | Controller_Auth::post_login |
 | 他者リソースへのアクセス | 判定をModel_Board::can_access()にまとめ、すべての取得・更新でboards.owner_idとログイン中のuser_idを条件に入れる | 全Model |
 | Cookieの盗用 | config.phpのcookieでHttpOnlyとSameSite=Laxを有効にし、HTTPS環境ではSecureも付ける。FuelPHP 1.8のCookieクラスはSameSiteを渡せないため、classes/cookie.phpでCookie::set()を上書きし、bootstrap.phpでコアのCookieと差し替える。session.phpはfileドライバにして、CookieにはセッションIDだけを入れる（ADR 0003） | config/config.php、classes/cookie.php、bootstrap.php、config/session.php |
-| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
-| 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数から読む | config/db.php |
+| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、set_message()で日本語にする。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
+| 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数から読む。初めて暗号化（セッションなど）を使うとFuelPHPが鍵の入った config/crypt.php を自動で作るため、.gitignoreに入れてコミットしない | config/db.php、.gitignore |
 
 ### テスト
 
-12/5〜12/6のテスト期間では、自動テストで並び替えと権限のロジックを、手動テストで画面操作を確認する。手動テストの項目はスプレッドシートのチェックシートに転記する。
+12/5〜12/6のテスト期間では、自動テストで並び替えと権限のロジックを、手動テストで画面操作を確認する。DBを使うテストは setUp() で DB::start_transaction()、tearDown() で DB::rollback_transaction() を呼び、テスト用DBにデータを残さない。手動テストの項目はスプレッドシートのチェックシートに転記する。
 
 | 種類 | 対象 | 確認する内容 |
 | --- | --- | --- |
