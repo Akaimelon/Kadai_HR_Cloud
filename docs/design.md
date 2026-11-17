@@ -357,6 +357,9 @@ kanban-todo/
 │   ├── compose.noport.yml         # dbのポート公開を外す上書き（3306番が使用中の環境向け）
 │   ├── Dockerfile                 # PHPコンテナ（PHPUnit 5.7 を含む）
 │   └── db/                        # MySQLコンテナの設定
+├── docs/
+│   ├── design.md                  # 設計書（この文書）
+│   └── adr/                       # 判断の理由（ADR）
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
 │   └── app/
