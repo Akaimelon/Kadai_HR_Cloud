@@ -323,7 +323,7 @@ sequenceDiagram
 | アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す。登録画面の「すでに登録されています」からは登録済みのメールアドレスがわかるが、防ぐにはメールでの本人確認が要るため、課題の範囲外として対応しない | Controller_Auth::post_login |
 | 他者リソースへのアクセス | 判定をModel_Board::can_access()にまとめ、すべての取得・更新でboards.owner_idとログイン中のuser_idを条件に入れる | 全Model |
 | Cookieの盗用 | config.phpのcookieでHttpOnlyとSameSite=Laxを有効にし、HTTPS環境ではSecureも付ける。FuelPHP 1.8のCookieクラスはSameSiteを渡せないため、classes/cookie.phpでCookie::set()を上書きし、bootstrap.phpでコアのCookieと差し替える。session.phpはfileドライバにして、CookieにはセッションIDだけを入れる（ADR 0003） | config/config.php、classes/cookie.php、bootstrap.php、config/session.php |
-| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、set_message()で日本語にする。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
+| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、config.phpのlanguageをjaにし、lang/ja/validation.phpに日本語のメッセージを置く。画面ごとに文を変えるもの（「画面を再読み込みしてください」など）だけset_message()で書く。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
 | 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数から読む。初めて暗号化（セッションなど）を使うとFuelPHPが鍵の入った config/crypt.php を自動で作るため、.gitignoreに入れてコミットしない | config/db.php、.gitignore |
 
 ### テスト
@@ -378,11 +378,12 @@ kanban-todo/
 │       │   └── kanban/
 │       │       └── cardmover.php  # namespace Kanban。並び替え処理
 │       ├── config/
-│       │   ├── config.php         # Cookie属性・CSRFトークンの有効期限
+│       │   ├── config.php         # Cookie属性・CSRFトークンの有効期限・言語（ja）
 │       │   ├── db.php
 │       │   ├── session.php
 │       │   ├── routes.php
 │       │   └── kanban.php         # 独自config
+│       ├── lang/ja/validation.php # Validationの日本語メッセージ
 │       ├── migrations/            # テーブル作成と statuses の初期データ
 │       ├── tests/                 # PHPUnit
 │       └── views/

@@ -141,8 +141,6 @@ class Controller_Api_Cards extends Controller_Api_Base
 		$val->add('memo', 'メモ')
 			->add_rule('trim')
 			->add_rule('max_length', 1000);
-		$val->set_message('required', ':labelを入力してください');
-		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
 
 		return $val;
 	}

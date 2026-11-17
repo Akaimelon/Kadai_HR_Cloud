@@ -89,10 +89,6 @@ class Controller_Auth extends Controller_Base
 				return strlen($password) <= 72;
 			}));
 
-		$val->set_message('required', ':labelを入力してください');
-		$val->set_message('valid_email', ':labelの形式が正しくありません');
-		$val->set_message('min_length', ':labelは:param:1文字以上で入力してください');
-		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
 		$val->set_message('max_bytes', ':labelは半角72文字以内（全角は24文字以内）で入力してください');
 
 		return $val;
