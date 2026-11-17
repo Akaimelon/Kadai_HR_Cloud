@@ -72,6 +72,25 @@ class Test_Model_Board extends TestCase
 		$this->assertSame(0, (int) $counts[$empty]);
 	}
 
+	public function test_選考ステージ別の件数を数える()
+	{
+		$id = Model_Board::create($this->user_id, 'エンジニア採用');
+		$this->insert_card($id, 1);
+		$this->insert_card($id, 1);
+		$this->insert_card($id, 4);
+
+		$counts = Model_Board::count_cards_by_status($this->user_id);
+
+		$this->assertSame(array($id => array(1 => 2, 4 => 1)), $counts);
+	}
+
+	public function test_選考ステージ別の件数に他人のボードは入らない()
+	{
+		$this->insert_card(Model_Board::create($this->other_user_id, '他人のボード'), 1);
+
+		$this->assertSame(array(), Model_Board::count_cards_by_status($this->user_id));
+	}
+
 	public function test_自分のボードは操作できる()
 	{
 		$id = Model_Board::create($this->user_id, 'エンジニア採用');
@@ -163,12 +182,13 @@ class Test_Model_Board extends TestCase
 	/**
 	 * Model_Card がまだないので、カードは直接 INSERT する
 	 */
-	protected function insert_card($board_id)
+	protected function insert_card($board_id, $status_id = 1)
 	{
 		$now = date('Y-m-d H:i:s');
 		DB::insert('cards')
 			->set(array(
 				'board_id'   => $board_id,
+				'status_id'  => $status_id,
 				'title'      => '応募者',
 				'created_at' => $now,
 				'updated_at' => $now,

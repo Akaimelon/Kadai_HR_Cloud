@@ -35,6 +35,34 @@ class Model_Board
 	}
 
 	/**
+	 * ユーザーのボードごとに、選考ステージ別の応募の件数を数える
+	 *
+	 * ボード一覧で、ボードを開かずにどの段階に何人いるかを見せるため。
+	 * 件数が0のステージは行がないので、呼び出し側で0として扱う。
+	 *
+	 * @param  int $user_id
+	 * @return array  ボードIDをキーに、選考ステージIDをキーにした件数の配列
+	 */
+	public static function count_cards_by_status($user_id)
+	{
+		$rows = \DB::select('cards.board_id', 'cards.status_id', \DB::expr('COUNT(cards.id) AS card_count'))
+			->from('cards')
+			->join('boards')->on('boards.id', '=', 'cards.board_id')
+			->where('boards.owner_id', '=', $user_id)
+			->group_by('cards.board_id', 'cards.status_id')
+			->execute()
+			->as_array();
+
+		$counts = array();
+		foreach ($rows as $row)
+		{
+			$counts[(int) $row['board_id']][(int) $row['status_id']] = (int) $row['card_count'];
+		}
+
+		return $counts;
+	}
+
+	/**
 	 * ボードを作成する
 	 *
 	 * @param  int    $owner_id
@@ -62,7 +90,7 @@ class Model_Board
 	 *
 	 * @param  int $board_id
 	 * @param  int $user_id
-	 * @return array|null  id・title
+	 * @return array|null  id・title・updated_at
 	 */
 	public static function find($board_id, $user_id)
 	{
@@ -71,7 +99,7 @@ class Model_Board
 			return null;
 		}
 
-		return \DB::select('id', 'title')
+		return \DB::select('id', 'title', 'updated_at')
 			->from('boards')
 			->where('id', '=', $board_id)
 			->execute()

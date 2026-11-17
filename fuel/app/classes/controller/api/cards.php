@@ -45,7 +45,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 
 		$id = Model_Card::create($board_id, Guard::user_id(), $status_id, $val->validated('title'), $this->validated_memo($val));
 
-		// 画面に登録日を出すため、DBに入った created_at ごと返す
+		// 画面に更新日時を出すため、DBに入った updated_at ごと返す
 		return $this->response(array(
 			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
 		), 201);
@@ -200,6 +200,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 			'title'      => $card['title'],
 			'memo'       => $card['memo'],
 			'created_at' => $card['created_at'],
+			'updated_at' => $card['updated_at'],
 		);
 	}
 }

@@ -52,6 +52,11 @@ class Controller_Welcome extends Controller
 	 */
 	public function action_404()
 	{
-		return Response::forge(Presenter::forge('welcome/404'), 404);
+		// ヘッダーに、どのアカウントでログインしているかを出すため（Controller_Base と同じ）
+		$user_id = Guard::user_id();
+
+		return Response::forge(View::forge('404', array(
+			'user_email' => $user_id === null ? '' : (string) Model_User::find_email($user_id),
+		)), 404);
 	}
 }

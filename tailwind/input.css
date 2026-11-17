@@ -4,3 +4,50 @@
 @source "../public/assets/js";
 @source not "../public/assets/js/bootstrap*.js";
 @source "../fuel/app/config/kanban.php";
+
+/*
+ * 色はデザイン案（2026-11-18）の値をそのまま使い、画面では名前で指定する。
+ * 値を画面に直接書くと、同じ色が何十か所にも散らばり、まとめて変えられなくなるため。
+ * フォントは外部から読まず端末のものを使う（外部へのリクエストを増やさず、オフラインでも見た目を変えないため）。
+ */
+@theme {
+	--font-sans: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+
+	--color-canvas: #F4F5F7;
+	--color-column: #EBEDF0;
+	--color-ink: #1A1D21;
+	--color-ink-soft: #4A525C;
+	--color-muted: #5B6470;
+	--color-faint: #C9CED6;
+	--color-line: #E1E4E8;
+	--color-line-soft: #EEF0F3;
+	--color-field: #D0D5DD;
+
+	--color-primary: #2450C4;
+	--color-primary-dark: #1A3C99;
+	--color-primary-tint: #E6ECFA;
+	--color-primary-line: #9DB2E6;
+
+	--color-danger: #B42318;
+	--color-danger-strong: #D92D20;
+	--color-danger-tint: #FEF3F2;
+	--color-danger-soft: #FEE4E2;
+	--color-danger-line: #FECDCA;
+	--color-warning: #FDB022;
+
+	/* 選考ステージの色。点（dot）と、名前を囲む札（chip）に使う */
+	--color-stage-screening: #9AA4B2;
+	--color-stage-first: #6C93E8;
+	--color-stage-final: #2450C4;
+	--color-stage-offer: #D97706;
+	--color-stage-offer-ink: #9A4A06;
+	--color-stage-closed: #5B6470;
+	--color-chip-neutral: #F1F2F4;
+	--color-chip-blue: #EEF2FC;
+	--color-chip-amber: #FEF4E6;
+}
+
+/* <dialog> の後ろを暗くする色。Tailwind の backdrop: で書くと、すべてのダイアログに同じクラスを並べることになるため、ここで決める */
+dialog::backdrop {
+	background: rgb(16 20 28 / 0.45);
+}

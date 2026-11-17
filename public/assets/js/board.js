@@ -4,6 +4,10 @@
 	const root = document.getElementById('board');
 	const apiUrl = root.getAttribute('data-api-url');
 	const cardApiUrl = root.getAttribute('data-card-api-url');
+	const boardApiUrl = root.getAttribute('data-board-api-url');
+	const boardsUrl = root.getAttribute('data-boards-url');
+	// 選考ステージの名前と色（id・title・dot・chip）。モーダルに出すため、サーバーが出したものを使う
+	const statuses = JSON.parse(root.getAttribute('data-statuses'));
 	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 	/**
@@ -39,24 +43,41 @@
 	}
 
 	function CardItem(data) {
-		this.id = data.id;
-		this.statusId = data.status_id;
-		this.title = ko.observable(data.title);
-		this.memo = ko.observable(data.memo);
-		this.editing = ko.observable(false);
-		// 保存に失敗したとき、表示中の内容を変えずに入力だけを残すため、title・memo とは別に持つ
-		this.draftTitle = ko.observable('');
-		this.draftMemo = ko.observable('');
-		// created_at は「2026-11-17 12:34:56」の形なので、先頭10文字が日付になる
-		this.createdOn = data.created_at.slice(0, 10).replace(/-/g, '/');
+		const self = this;
+
+		self.id = data.id;
+		self.statusId = data.status_id;
+		self.title = ko.observable(data.title);
+		self.memo = ko.observable(data.memo);
+		self.updatedAt = ko.observable(data.updated_at);
+		self.updatedLabel = ko.pureComputed(function () {
+			return KanbanUi.formatDateTime(self.updatedAt());
+		});
 	}
 
-	function Column(statusId) {
-		this.statusId = statusId;
+	function Column(status) {
+		this.statusId = status.id;
+		this.status = status;
 		this.cards = ko.observableArray([]);
-		this.adding = ko.observable(false);
-		this.newTitle = ko.observable('');
-		this.newMemo = ko.observable('');
+	}
+
+	/**
+	 * カードの作成・編集のモーダルの状態。
+	 * card が null なら作成、カードが入っていればそのカードの編集
+	 */
+	function CardDialog(firstColumn) {
+		const self = this;
+
+		self.open = ko.observable(false);
+		self.card = ko.observable(null);
+		self.column = ko.observable(firstColumn);
+		// 保存に失敗したとき、カードの表示を変えずに入力だけを残すため、カードとは別に持つ
+		self.title = ko.observable('');
+		self.memo = ko.observable('');
+		self.error = ko.observable('');
+		self.status = ko.pureComputed(function () {
+			return self.column().status;
+		});
 	}
 
 	function BoardViewModel() {
@@ -64,32 +85,44 @@
 
 		// 列はサーバーが出したHTMLにあるので、その status_id から列を作る
 		self.columns = {};
-		Array.prototype.forEach.call(root.querySelectorAll('[data-status-id]'), function (section) {
-			const statusId = Number(section.getAttribute('data-status-id'));
-			self.columns[statusId] = new Column(statusId);
+		statuses.forEach(function (status) {
+			self.columns[status.id] = new Column(status);
+		});
+		self.firstColumn = self.columns[statuses[0].id];
+
+		self.title = ko.observable(root.getAttribute('data-title'));
+		self.updatedAt = ko.observable(root.getAttribute('data-updated-at'));
+		self.updatedLabel = ko.pureComputed(function () {
+			return KanbanUi.formatDateTime(self.updatedAt());
+		});
+		self.total = ko.pureComputed(function () {
+			return statuses.reduce(function (sum, status) {
+				return sum + self.columns[status.id].cards().length;
+			}, 0);
 		});
 
-		self.errorMessage = ko.observable('');
 		self.saving = ko.observable(false);
+		self.dialog = new CardDialog(self.firstColumn);
+		self.confirmation = new KanbanUi.Confirmation();
+		self.toast = new KanbanUi.Toast();
 
 		/**
-		 * 保存中に別の操作を受け付けると、画面とサーバーの状態がずれるため、1つずつ送る
+		 * 保存中に別の操作を受け付けると、画面とサーバーの状態がずれるため、1つずつ送る。
+		 * カードやボード名を変えるとボードの更新日時も新しくなる（設計書4章）ので、成功したら見出しの表示も進める
 		 */
 		function save(request, onSuccess, onFailure) {
 			if (self.saving()) {
 				return;
 			}
 			self.saving(true);
-			self.errorMessage('');
+			self.toast.close();
 
 			request()
-				.then(onSuccess)
-				.catch(function (error) {
-					if (onFailure) {
-						onFailure();
-					}
-					self.errorMessage(error.message);
+				.then(function (data) {
+					onSuccess(data);
+					self.updatedAt(KanbanUi.now());
 				})
+				.catch(function (error) { onFailure(error.message); })
 				.then(function () { self.saving(false); });
 		}
 
@@ -101,74 +134,143 @@
 						self.columns[card.status_id].cards.push(new CardItem(card));
 					});
 				})
-				.catch(function (error) { self.errorMessage(error.message); });
+				.catch(function (error) { self.toast.show(error.message); });
 		};
 
-		self.startAdd = function (column) {
-			column.newTitle('');
-			column.newMemo('');
-			column.adding(true);
+		// ---- ボード名の変更・ボードの削除 ----
+
+		self.renaming = ko.observable(false);
+		self.draftTitle = ko.observable('');
+		self.renameError = ko.observable('');
+
+		self.startRename = function () {
+			self.draftTitle(self.title());
+			self.renameError('');
+			self.renaming(true);
 		};
 
-		self.cancelAdd = function (column) {
-			column.adding(false);
+		self.cancelRename = function () {
+			self.renaming(false);
 		};
 
-		self.addCard = function (column) {
+		self.saveTitle = function () {
+			self.renameError('');
 			save(
-				function () {
-					return callApi('POST', apiUrl, {
-						title: column.newTitle(),
-						memo: column.newMemo(),
-						status_id: column.statusId
-					});
-				},
+				function () { return callApi('PUT', boardApiUrl, { title: self.draftTitle() }); },
 				function (data) {
-					// サーバーは列の一番下に作るので、画面でも末尾に足す
-					column.cards.push(new CardItem(data.card));
-					column.adding(false);
+					self.title(data.board.title);
+					document.title = data.board.title + ' | 採用カンバン';
+					self.renaming(false);
+				},
+				self.renameError
+			);
+		};
+
+		self.deleteBoard = function () {
+			if (self.saving()) {
+				return;
+			}
+			self.confirmation.ask(
+				'ボード「' + self.title() + '」を削除しますか？',
+				KanbanUi.boardDeleteMessage(self.total()),
+				function () {
+					save(
+						function () { return callApi('DELETE', boardApiUrl); },
+						function () { window.location.href = boardsUrl; },
+						self.toast.show
+					);
 				}
 			);
 		};
+
+		// ---- カードの作成・編集・削除（モーダル） ----
 
 		function cardUrl(card) {
 			return cardApiUrl + '/' + card.id;
 		}
 
-		self.startEdit = function (card) {
-			card.draftTitle(card.title());
-			card.draftMemo(card.memo() || '');
-			card.editing(true);
+		self.openCreate = function (column) {
+			self.dialog.card(null);
+			self.dialog.column(column);
+			self.dialog.title('');
+			self.dialog.memo('');
+			self.dialog.error('');
+			self.dialog.open(true);
 		};
 
-		self.cancelEdit = function (card) {
-			card.editing(false);
+		self.openEdit = function (card) {
+			self.dialog.card(card);
+			self.dialog.column(self.columns[card.statusId]);
+			self.dialog.title(card.title());
+			self.dialog.memo(card.memo() || '');
+			self.dialog.error('');
+			self.dialog.open(true);
 		};
 
-		self.saveCard = function (card) {
+		self.closeDialog = function () {
+			self.dialog.open(false);
+		};
+
+		self.saveDialog = function () {
+			const card = self.dialog.card();
+			self.dialog.error('');
+
+			if (card === null) {
+				const column = self.dialog.column();
+				save(
+					function () {
+						return callApi('POST', apiUrl, {
+							title: self.dialog.title(),
+							memo: self.dialog.memo(),
+							status_id: column.statusId
+						});
+					},
+					function (data) {
+						// サーバーは列の一番下に作るので、画面でも末尾に足す
+						column.cards.push(new CardItem(data.card));
+						self.dialog.open(false);
+					},
+					self.dialog.error
+				);
+				return;
+			}
+
 			save(
 				function () {
-					return callApi('PUT', cardUrl(card), { title: card.draftTitle(), memo: card.draftMemo() });
+					return callApi('PUT', cardUrl(card), { title: self.dialog.title(), memo: self.dialog.memo() });
 				},
 				function (data) {
 					// 前後の空白を除くなど、サーバーが整えた値を表示する
 					card.title(data.card.title);
 					card.memo(data.card.memo);
-					card.editing(false);
+					card.updatedAt(data.card.updated_at);
+					self.dialog.open(false);
+				},
+				self.dialog.error
+			);
+		};
+
+		self.deleteCard = function () {
+			const card = self.dialog.card();
+			if (self.saving()) {
+				return;
+			}
+			// 確認ダイアログはカードのモーダルの上に重ねて開き、キャンセルしたらモーダルに戻れるようにする
+			self.confirmation.ask(
+				'カード「' + card.title() + '」を削除しますか？',
+				'メモも含めて削除され、元に戻せません。',
+				function () {
+					self.dialog.open(false);
+					save(
+						function () { return callApi('DELETE', cardUrl(card)); },
+						function () { self.columns[card.statusId].cards.remove(card); },
+						self.toast.show
+					);
 				}
 			);
 		};
 
-		self.deleteCard = function (card) {
-			const message = '「' + card.title() + '」のカードを削除します。よろしいですか？';
-			if (self.saving() || !window.confirm(message)) {
-				return;
-			}
-			save(
-				function () { return callApi('DELETE', cardUrl(card)); },
-				function () { self.columns[card.statusId].cards.remove(card); }
-			);
-		};
+		// ---- ドラッグ&ドロップ ----
 
 		self.draggingCard = ko.observable(null);
 		// 差し込む位置の線を出すため、どの列の何番目の前に落とすかを持つ（index は移動前の並びで数える）
@@ -274,8 +376,11 @@
 				function () {
 					return callApi('PUT', cardUrl(card) + '/move', { status_id: toColumn.statusId, sort_order: toIndex });
 				},
-				function () {},
-				function () { place(fromColumn, fromIndex); }
+				function (data) { card.updatedAt(data.card.updated_at); },
+				function (message) {
+					place(fromColumn, fromIndex);
+					self.toast.show(message.replace(/。$/, '') + '。カードを元の位置に戻しました。');
+				}
 			);
 		}
 	}
