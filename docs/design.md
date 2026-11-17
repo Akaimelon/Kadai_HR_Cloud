@@ -366,10 +366,12 @@ kanban-todo/
 │       ├── bootstrap.php          # Cookieクラスの差し替え
 │       ├── classes/
 │       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
+│       │   ├── guard.php          # ログイン・CSRFトークンの確認、ログイン中のユーザー
 │       │   ├── controller/
 │       │   │   ├── base.php       # 画面用の基底。before()でログイン・CSRF確認
 │       │   │   ├── auth.php       # 登録・ログイン・ログアウト
 │       │   │   ├── boards.php     # ボード一覧・カンバン画面
+│       │   │   ├── error.php      # 404画面（routes.phpの_404_）
 │       │   │   └── api/
 │       │   │       ├── base.php   # API用の基底（Controller_Rest継承）。before()でログイン・CSRF確認
 │       │   │       ├── boards.php # ボードAPI
