@@ -1,6 +1,6 @@
 # カンバン型採用管理アプリ 設計書
 
-2026-11-14 時点
+2026-11-18 時点
 
 ## 0. 課題の必須条件
 
@@ -10,15 +10,15 @@
 | --- | --- | --- | --- |
 | 1 | サーバサイド言語はPHPで、フレームワークのFuelphpを使用すること | サーバ側はFuelPHPのMVCで実装する | fuel/app/ 全体 |
 | 2 | beforeメソッドを使う | 基底コントローラを画面用のController_Base（Controller_Templateを継承）とAPI用のController_Api_Base（Controller_Restを継承）の2つ作り、それぞれのbefore()でログイン確認とCSRF確認を行う。確認処理は1か所にまとめて両方から呼ぶ。未ログイン時は画面ならログイン画面へリダイレクト、APIなら401を返す | controller/base.php、controller/api/base.php |
-| 3 | configファイルをカスタマイズする | db.php（接続先）、session.php（セッションの保存先）、config.php（Cookie属性とCSRFトークンの有効期限）、routes.php（URL設計）を変更し、独自のkanban.php（status_idごとの表示色をTailwindのクラス名で持つ。選考ステージの名前と順番はDBのstatusesが持ち、configは見た目だけを持つ）を追加する | config/ |
+| 3 | configファイルをカスタマイズする | db.php（接続先）、session.php（セッションの保存先）、config.php（Cookie属性とCSRFトークンの有効期限）、routes.php（URL設計）を変更し、独自のkanban.php（status_idごとの表示色（点・札・列見出しの3種類）をTailwindのクラス名で持つ。選考ステージの名前と順番はDBのstatusesが持ち、configは見た目だけを持つ）を追加する | config/ |
 | 4 | sessionやcookieを使う | ログイン状態をSessionにuser_idで保持し、ログイン成功時にSession::destroy()とSession::create()でセッションを作り直す（ADR 0001）。セッションIDはCookieで受け渡し、Cookieの属性はconfig.phpのcookieで設定する（ADR 0003） | controller/auth.php、controller/base.php、config/session.php、config/config.php、classes/cookie.php |
 | 5 | ネームスペースを使う（実装していなくても、目的と使い方を口頭で説明できればOK） | カード移動の並び替え処理をKanban名前空間のクラス Kanban\CardMover に切り出す | classes/kanban/cardmover.php |
 | 6 | \（バックスラッシュ）を使ったグローバルな名前空間へのアクセスについて理解している | Kanban名前空間内からは `\DB` や `\Session` のように先頭の`\`を付けてコアクラスを呼ぶ | classes/kanban/cardmover.php |
 | 7 | データベースとのやり取りはDBクラスを使うこと | 全クエリをDB::select / insert / update / delete のクエリビルダで書く。ORMは使わない | model/ |
 | 8 | 1:n関係のテーブル構造があること（正規化について説明できること） | users 1:n boards 1:n cards、statuses 1:n cards。列名はstatusesテーブルに分離する（4章） | migrations/ |
 | 9 | CRUDの機能が網羅されている | ボードとカードで作成・参照・更新・削除をすべて実装する（5章） | controller/api/boards.php、controller/api/cards.php |
-| 10 | フロントエンドのライブラリにknockout.jsが使用されている | ボード一覧画面とカンバン画面の状態をobservableArrayで持ち、バインディングで描画する | public/assets/js/boards.js、public/assets/js/board.js |
-| 11 | uxを考慮して一部動的なuiが実装されている（非同期処理） | D&D、ボードとカードの追加・編集・削除をfetchでAPIに送り、ページ遷移せずに画面へ反映する。保存に失敗したら元に戻す | public/assets/js/boards.js、public/assets/js/board.js、controller/api/ |
+| 10 | フロントエンドのライブラリにknockout.jsが使用されている | ボード一覧画面とカンバン画面の状態をobservableArrayで持ち、バインディングで描画する | public/assets/js/boards.js、public/assets/js/board.js、public/assets/js/ui.js |
+| 11 | uxを考慮して一部動的なuiが実装されている（非同期処理） | D&D、ボードとカードの追加・編集・削除をfetchでAPIに送り、ページ遷移せずに画面へ反映する。保存に失敗したら元に戻す。カードの追加・編集はモーダル、削除の確認は独自のダイアログで行い、ページ遷移しない | public/assets/js/boards.js、public/assets/js/board.js、controller/api/ |
 | 12 | GitHubでコードの管理を行う | mainへの直接pushを禁止し、作業ブランチからプルリクエストで取り込む。CIは作らず、テストは手元で `php oil test` を実行する（7章） | GitHubのリポジトリ |
 | 13 | セキュリティ資料を読み必要な実装を行う | 7章の対策を資料の項目と照合済み。実装後にチェックシートで確認する | 7章を参照 |
 
@@ -50,8 +50,8 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | 機能 | 内容 | 優先度 |
 | --- | --- | --- |
 | ユーザー登録・ログイン | 登録、ログイン、ログアウト。未ログインでは全画面を表示しない。パスワードは8文字以上、半角72文字以内（全角は24文字以内）。bcryptは72バイトより後ろを無視するため、文字数ではなくバイト数で上限を判定する | 必須 |
-| ボード管理 | 作成・一覧・名前変更・削除（物理削除。実行前に「応募N件も削除されます」と件数入りの確認ダイアログを出す）。ボード一覧画面もページ遷移なしで操作する | 必須 |
-| カード管理 | 作成・編集・削除（物理削除。実行前に確認ダイアログを出す）。各列の「＋追加」からどの列にも作成でき、列の一番下に追加される | 必須 |
+| ボード管理 | 作成・一覧・名前変更・削除（物理削除。実行前に「このボードのカードN枚も一緒に削除され、元に戻せません」と件数入りの確認ダイアログを出す）。ボード一覧には、ボードごとの選考ステージ別の人数・積み上げバー・更新日時を出す。名前変更と削除は、ボード一覧とカンバン画面の両方からできる。ボード一覧画面もページ遷移なしで操作する | 必須 |
+| カード管理 | 作成・編集・削除（物理削除。実行前に確認ダイアログを出す）。作成と編集はモーダルで行い、削除は編集モーダルの中から行う。各列の「カードを追加」からその列に、画面上部の「カードを追加」から最初の選考ステージ（書類選考）に作成でき、列の一番下に追加される。カードには応募者名・メモ・更新日時を出す | 必須 |
 | 列 | 書類選考 / 一次面接 / 最終面接 / 内定 / 不採用・辞退 の5列で固定。選考が終わった応募は削除せず「不採用・辞退」列に移して記録を残す | 必須 |
 | ドラッグ&ドロップ | 列をまたぐ移動と列内の並び替え。移動はページ遷移なしで保存 | 必須 |
 | 他者ボードの操作不可 | 自分のボード以外は閲覧・編集・削除できない。URLやAPIを直接指定しても404を返す | 必須 |
@@ -60,7 +60,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 ### 非機能要件
 
 - セキュリティ：SQLインジェクション、XSS、CSRF、セッション固定化への対策を入れる（詳細は7章）
-- 操作感：D&Dの結果は画面に即時反映し、保存に失敗したらカードを元の位置に戻してメッセージを出す
+- 操作感：D&Dの結果は画面に即時反映し、保存に失敗したらカードを元の位置に戻して、画面下のトーストで知らせる。入力エラーは、入力欄の近く（モーダルの中など）に出す
 - 保守性：コードはGitHubで管理し、プルリクエスト単位でレビューしてから取り込む
 
 ### スケジュール
@@ -84,7 +84,8 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | データベース | MySQL 8.0（InnoDB、文字コードutf8mb4） | FuelPHPのDBクラスが標準で対応し、外部キー制約とトランザクションが使える。utf8では絵文字や一部の漢字を保存できないため、db.phpのcharsetをutf8mb4に変える |
 | 認証 | 自前実装（Session + password_hash） | FuelPHPのAuthパッケージ（SimpleAuth）は、このアプリの要件を満たすには中心の処理を上書きする必要があり、便利さが残らない。ログイン時に中でSession::rotate()を呼ぶためセッション固定化を防げず（ADR 0001）、パスワードは全ユーザー共通のソルトで保存してpassword_verifyを使えない。usersテーブルにも使わない列が増える。Authの利点（remember me、権限のグループなど）は要件にない。自前実装なら課題条件No.4も自分で書いたSession::set()で説明できる（ADR 0005） |
 | フロントエンド | knockout.js | 課題条件。カードの配列をobservableArrayで持てば、移動後の再描画を自動で行える |
-| スタイリング | Tailwind CSS（スタンドアロンCLIでビルド） | knockoutのcssバインディングでクラスを付け外しするだけで、ドラッグ中などの見た目を切り替えられる。Node.jsなしでビルドでき、使ったクラスだけを出力するのでCSSが小さく済む。クラス名はJSで組み立てず、省略せずに書く。ビルドの方法はADR 0004 |
+| スタイリング | Tailwind CSS（スタンドアロンCLIでビルド） | knockoutのcssバインディングでクラスを付け外しするだけで、ドラッグ中などの見た目を切り替えられる。Node.jsなしでビルドでき、使ったクラスだけを出力するのでCSSが小さく済む。クラス名はJSで組み立てず、省略せずに書く。ビルドの方法はADR 0004。色はデザイン案の値をtailwind/input.cssの@themeに名前付きで登録し、画面ではその名前で使う（同じ値を画面に直接書くと、まとめて変えられなくなるため）。フォントは外部から読まず端末のものを使う |
+| モーダル・確認ダイアログ | HTML標準の`<dialog>`とshowModal() | Escで閉じる、後ろの画面を操作させない、後ろを暗くする、をブラウザに任せられる。削除の確認にwindow.confirmを使わないのは、見た目を画面に揃えるためと、ブラウザの自動操作による確認が本物のダイアログで止まるため |
 | ドラッグ&ドロップ | HTML5 Drag and Drop API | 追加ライブラリなしでknockoutのeventバインディングから扱える |
 | 非同期通信 | fetch API（JSON） | ブラウザ標準で、jQueryを入れずに済む |
 | 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる |
@@ -163,7 +164,7 @@ erDiagram
 | id | INT UNSIGNED | NO | AUTO_INCREMENT | 主キー |
 | owner_id | INT UNSIGNED | NO | | users.idへの外部キー。所有者。ON DELETE CASCADE |
 | title | VARCHAR(100) | NO | | ボード名 |
-| updated_at | DATETIME | NO | | 作成・更新日時。ボード名の変更時とカード操作時に更新し、ボード一覧はこの新しい順に並べる |
+| updated_at | DATETIME | NO | | 作成・更新日時。ボード名の変更時とカード操作時に更新し、ボード一覧はこの新しい順に並べる。ボード一覧とカンバン画面に「月/日 時:分」で表示する |
 
 ### statuses
 
@@ -185,8 +186,8 @@ statusesは選考ステージのマスタで、画面から追加・削除はし
 | title | VARCHAR(100) | NO | | 応募者名 |
 | memo | TEXT | YES | NULL | メモ |
 | sort_order | INT UNSIGNED | NO | 0 | 列内の並び順。0が一番上で、列ごとに0からの連番。新規作成時は列の末尾（その列のMAX+1）に入れる |
-| created_at | DATETIME | NO | | 作成日時。応募の登録日としてカードに表示する |
-| updated_at | DATETIME | NO | | 作成・更新日時。最後に選考ステージや内容が変わった日時。他のカードのsort_order更新で変わらないよう、自動更新（ON UPDATE CURRENT_TIMESTAMP）は使わず、コードで動かしたカードにだけ値を入れる |
+| created_at | DATETIME | NO | | 作成日時。画面には出さない（カードには updated_at を出す） |
+| updated_at | DATETIME | NO | | 作成・更新日時。最後に選考ステージや内容が変わった日時。他のカードのsort_order更新で変わらないよう、自動更新（ON UPDATE CURRENT_TIMESTAMP）は使わず、コードで動かしたカードにだけ値を入れる。カードと編集モーダルに「月/日 時:分」で表示する |
 
 cardsには (board_id, status_id, sort_order) の複合インデックスを張り、列ごとの並び順取得を速くする。board_idの外部キーはこの複合インデックスの先頭列で兼ねる。status_idは先頭列ではないため、外部キー用のインデックスをMySQLが自動で作る。共有・権限管理は後から足せるようにしておく。ボードを操作できるかの判定は Model_Board::can_access() の1か所にまとめ、共有を足すときは board_id・user_id・role（閲覧 / 編集）を持つ中間テーブル board_members を追加して、can_access() の中だけを変える。
 
@@ -205,6 +206,21 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 | POST | /auth/logout | Controller_Auth::post_logout | セッション破棄してログインへ | 必要 |
 | GET | /boards | Controller_Boards::get_index | ボード一覧 | 必要 |
 | GET | /boards/{id} | Controller_Boards::get_view | カンバン画面 | 必要（所有者のみ） |
+| GET | （存在しないURL） | Controller_Welcome::action_404（routes.phpの`_404_`） | 404画面。他人のボードと存在しないボードもここに来る | 不要 |
+
+### 画面の作り
+
+見た目はデザイン案（ログイン・新規登録・ボード一覧・カンバン・カード作成/編集・削除確認・404）に合わせる。デザイン案は選考ステージが4列だが、不採用・辞退を残して5列にする（1章）。
+
+| 画面・部品 | 内容 |
+| --- | --- |
+| ヘッダー | ロゴ（ボード一覧へのリンク）、ログイン中のメールアドレス、ログアウト。ログイン前の画面（ログイン・新規登録）はヘッダーを出さず、ロゴとフォームを中央に置く |
+| ボード一覧 | 上に新しいボードの入力欄。ボードはカード型で並べ、ボード名・人数・更新日時、名前変更（鉛筆）と削除（ゴミ箱）、選考ステージ別の人数と積み上げバーを出す |
+| カンバン | パンくず（ボード一覧 / ボード名）、ボード名と名前変更、「N名 ・ 最終更新」、ボードを削除、カードを追加。列は選考ステージごとに色の点と件数を出し、空の列には「ここにカードをドロップ」を出す。狭い画面では列を縮めず横スクロールにする |
+| カードのモーダル | 応募者名（文字数を「n / 100」で表示）、選考ステージ（作成時は追加する列、編集時は今の列。変更はD&Dで行う）、メモ、最終更新（編集時）。編集時は左下に「カードを削除」 |
+| 削除の確認ダイアログ | ボードとカードで共通。キャンセルにフォーカスを置き、Escでも閉じる。カードの削除は編集モーダルの上に重ねて開き、キャンセルするとモーダルに戻る |
+| トースト | 画面下に出す。移動・削除・読み込みの失敗を知らせ、「閉じる」で消す |
+| 404・403 | アプリの見た目で、ボード一覧へ戻るボタンを出す。403はCSRFトークンの不一致などで出る |
 
 ### API（JSON）
 
@@ -221,6 +237,8 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 | DELETE | /api/cards/{id} | カード削除（物理削除） | | 204 |
 
 カード移動の sort_order は「移動先の列での挿入位置」で、範囲外の値（別タブで枚数がずれた場合など）は末尾に丸める。移動のたびに Kanban\CardMover が移動元と移動先の列を0からの連番に振り直すため、連番を保つ責任はサーバ側だけが持つ。
+
+GET /api/boards は、ボードごとに id・title・updated_at・card_count と、選考ステージ別の件数 status_counts（`[{"status_id": 1, "count": 3}, ...]`）を返す。件数が0のステージは含めず、画面側で0として扱う。status_counts を `{"1": 3}` のようなオブジェクトにしないのは、PHPの空配列がJSONではオブジェクトでなく配列になり、型が揃わなくなるため。ボードとカードを作成・変更するAPIは、画面に更新日時を出すため updated_at も返す。
 
 全APIで共通のエラーは、未ログインが401、他人のボードやカードが404、入力エラーが422、CSRFトークン不一致が403とする。他人のリソースに403ではなく404を返すのは、そのIDが存在すること自体を知らせないため。
 
@@ -277,7 +295,7 @@ sequenceDiagram
     alt 自分のカードでない
         D-->>A: 0件
         A-->>K: 404
-        K->>K: カードを元の位置に戻してメッセージ表示
+        K->>K: カードを元の位置に戻してトーストで知らせる
     else 自分のカード
         A->>S: move(card, status_id, sort_order)
         S->>D: \DB::start_transaction()
@@ -317,6 +335,7 @@ sequenceDiagram
 | 単体テスト（PHPUnit） | Kanban\CardMover | 列内・列間の移動後にsort_orderが0から連番になる |
 | 単体テスト（PHPUnit） | Model_Card | 他人のカードIDを指定すると取得・更新できない |
 | 単体テスト（PHPUnit） | Model_User | 正しいパスワードだけ認証が通る |
+| 単体テスト（PHPUnit） | Model_Board | 選考ステージ別の件数に、他人のボードのカードが入らない |
 | 手動テスト | ログイン | 未ログインで/boardsを開くとログイン画面に戻る |
 | 手動テスト | 権限 | 別ユーザーのボードIDをURLに入れると404になる |
 | 手動テスト | D&D | 移動後に再読み込みしても位置が保たれる |
@@ -367,12 +386,19 @@ kanban-todo/
 │       ├── migrations/            # テーブル作成と statuses の初期データ
 │       ├── tests/                 # PHPUnit
 │       └── views/
-│           ├── template.php
+│           ├── template.php       # 共通のレイアウト
+│           ├── _header.php        # ヘッダー（ロゴ・メールアドレス・ログアウト）
+│           ├── _logo.php          # ロゴのSVG（ヘッダーとログイン前の画面で共通）
+│           ├── _confirm_dialog.php # 削除の確認ダイアログ
+│           ├── _toast.php         # 画面下の通知
+│           ├── 403.php            # HttpNoAccessException を投げると使われる
+│           ├── 404.php
 │           ├── auth/
 │           └── boards/
 ├── public/
 │   ├── index.php
 │   └── assets/
+│       ├── js/ui.js               # ダイアログの開閉・確認ダイアログ・トースト・日時の表示（2画面で共通）
 │       ├── js/boards.js           # ボード一覧のViewModel
 │       ├── js/board.js            # カンバン画面のViewModel
 │       └── css/app.css        # Tailwindのビルド結果
