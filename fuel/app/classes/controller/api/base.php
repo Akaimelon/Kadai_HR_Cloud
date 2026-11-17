@@ -23,4 +23,18 @@ abstract class Controller_Api_Base extends Controller_Rest
 				throw new HttpJsonException(403, '画面を再読み込みしてから、もう一度操作してください');
 		}
 	}
+
+	/**
+	 * 他人のボードにも404を返すのは、そのIDのボードがあること自体を知らせないため（設計書5章）
+	 *
+	 * @param  string $board_id
+	 * @throws HttpJsonException
+	 */
+	protected function ensure_board_accessible($board_id)
+	{
+		if ( ! Model_Board::can_access($board_id, Guard::user_id()))
+		{
+			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
+		}
+	}
 }

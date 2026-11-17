@@ -140,6 +140,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 			->add_rule('max_length', Model_Card::TITLE_MAX_LENGTH);
 		$val->add('memo', 'メモ')
 			->add_rule('trim')
+			->add_rule('max_length', 1000);
 			->add_rule('max_length', Model_Card::MEMO_MAX_LENGTH);
 		$val->set_message('required', ':labelを入力してください');
 		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
@@ -156,20 +157,6 @@ class Controller_Api_Cards extends Controller_Api_Base
 	protected function validated_memo(\Validation $val)
 	{
 		return $val->validated('memo') === '' ? null : $val->validated('memo');
-	}
-
-	/**
-	 * 他人のボードにも404を返すのは、そのIDのボードがあること自体を知らせないため（設計書5章）
-	 *
-	 * @param  string $board_id
-	 * @throws HttpJsonException
-	 */
-	protected function ensure_board_accessible($board_id)
-	{
-		if ( ! Model_Board::can_access($board_id, Guard::user_id()))
-		{
-			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
-		}
 	}
 
 	/**
