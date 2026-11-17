@@ -19,7 +19,7 @@
 | 9 | CRUDの機能が網羅されている | ボードとカードで作成・参照・更新・削除をすべて実装する（5章） | controller/api/boards.php、controller/api/cards.php |
 | 10 | フロントエンドのライブラリにknockout.jsが使用されている | ボード一覧画面とカンバン画面の状態をobservableArrayで持ち、バインディングで描画する | public/assets/js/boards.js、public/assets/js/board.js |
 | 11 | uxを考慮して一部動的なuiが実装されている（非同期処理） | D&D、ボードとカードの追加・編集・削除をfetchでAPIに送り、ページ遷移せずに画面へ反映する。保存に失敗したら元に戻す | public/assets/js/boards.js、public/assets/js/board.js、controller/api/ |
-| 12 | GitHubでコードの管理を行う | mainへの直接pushを禁止し、featureブランチからプルリクエストで取り込む。CIはGitHub Actionsで回す | .github/workflows/ci.yml |
+| 12 | GitHubでコードの管理を行う | mainへの直接pushを禁止し、作業ブランチからプルリクエストで取り込む。CIは作らず、テストは手元で `php oil test` を実行する（7章） | GitHubのリポジトリ |
 | 13 | セキュリティ資料を読み必要な実装を行う | 7章の対策を資料の項目と照合済み。実装後にチェックシートで確認する | 7章を参照 |
 
 ### 口頭で説明する項目
@@ -61,7 +61,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 
 - セキュリティ：SQLインジェクション、XSS、CSRF、セッション固定化への対策を入れる（詳細は7章）
 - 操作感：D&Dの結果は画面に即時反映し、保存に失敗したらカードを元の位置に戻してメッセージを出す
-- 保守性：コードはGitHubで管理し、プルリクエスト単位でCIを通す
+- 保守性：コードはGitHubで管理し、プルリクエスト単位でレビューしてから取り込む
 
 ### スケジュール
 
@@ -89,7 +89,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | 非同期通信 | fetch API（JSON） | ブラウザ標準で、jQueryを入れずに済む |
 | 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる |
 | テスト | PHPUnit（oil test） | FuelPHPに組み込みのテストランナーで動く |
-| ソース管理・CI | GitHub + GitHub Actions | 課題条件。プルリクエストごとに構文チェックとテストを自動実行できる |
+| ソース管理 | GitHub | 課題条件。CI（GitHub Actions）は課題条件に含まれず、1人開発で手元のテストが動くため作らない（7章） |
 
 ## 3. 構成図
 
@@ -289,7 +289,7 @@ sequenceDiagram
     end
 ```
 
-## 7. セキュリティ、テスト、CI/CD、ディレクトリ構成
+## 7. セキュリティ、テスト、起動手順、ディレクトリ構成
 
 ### セキュリティ
 
@@ -323,25 +323,20 @@ sequenceDiagram
 | 手動テスト | D&D | 通信を切って移動するとカードが元の位置に戻る |
 | 手動テスト | XSS | カード名に`<script>`を入れても文字列として表示される |
 
-### CI/CD
+### 起動手順（CI/CDは作らない）
 
-GitHub Actionsで、プルリクエストとmainへのpushのたびに次の順で実行する。CIが通らないプルリクエストはmainに取り込まない。
+CI（GitHub Actions）は作らない。課題条件No.12は「GitHubでコードの管理を行う」だけでCIを求めておらず、1人開発で `php oil test` が手元で動くため、MySQLのサービスコンテナやPHP 7.3の用意に手間をかけるほどの利点がない。プルリクエストを作る前に、手元で `php oil test` を実行する。
 
-1. PHPのセットアップとcomposer install
-2. php -l による全ファイルの構文チェック
-3. MySQLのサービスコンテナを起動してマイグレーションを実行
-4. oil test でPHPUnitを実行
-
-レビュアーは提出したリポジトリをクローンし、自分のPCのDockerで起動する前提のため、CD（デプロイ）は作らない。代わりにREADMEに、docker/ での起動手順とマイグレーションの実行方法を書く。
+レビュアーは提出したリポジトリをクローンし、自分のPCのDockerで起動する前提のため、CD（デプロイ）も作らない。代わりにREADMEに、docker/ での起動手順とマイグレーションの実行方法を書く。ホストの3306番がほかのMySQLで使われている環境向けに、dbのポート公開を外す上書きファイル docker/compose.noport.yml を用意し、`-f` で足して起動できるようにする。
 
 ### ディレクトリ構成
 
 ```
 kanban-todo/
-├── .github/workflows/ci.yml      # GitHub Actions
 ├── docker/
 │   ├── docker-compose.yml         # PHP 7.3 + MySQL 8.0
-│   ├── Dockerfile                 # PHPコンテナ
+│   ├── compose.noport.yml         # dbのポート公開を外す上書き（3306番が使用中の環境向け）
+│   ├── Dockerfile                 # PHPコンテナ（PHPUnit 5.7 を含む）
 │   └── db/                        # MySQLコンテナの設定
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
