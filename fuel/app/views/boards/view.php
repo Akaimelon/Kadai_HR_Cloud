@@ -14,10 +14,22 @@
 				<section data-status-id="<?php echo $column['id']; ?>" data-bind="with: columns[<?php echo $column['id']; ?>]"
 					class="flex min-h-96 flex-col rounded-lg border border-gray-200 bg-gray-100">
 					<h2 class="rounded-t-lg px-3 py-2 text-sm font-bold <?php echo $column['class']; ?>"><?php echo $column['title']; ?></h2>
-					<div class="flex-1 space-y-2 p-2">
+					<?php // カードの上だけでなく列の空いているところにも落とせるよう、列の本体でドロップを受ける ?>
+					<div data-bind="event: { dragover: $root.dragOver, dragleave: $root.dragLeave, drop: $root.drop },
+							css: { 'bg-blue-50': $root.isDropColumn($data) }"
+						class="flex-1 space-y-2 rounded-b-lg p-2">
 						<?php // 応募者名とメモは利用者の入力なので、HTMLとして出さないよう text バインディングで表示する ?>
 						<ul data-bind="foreach: cards" class="space-y-2">
-							<li class="rounded border border-gray-200 bg-white px-3 py-2 shadow-sm">
+							<?php // 編集中にドラッグできると、入力欄の文字を選べなくなるため止める ?>
+							<li data-bind="attr: { draggable: editing() || $root.saving() ? 'false' : 'true' },
+									event: { dragstart: $root.dragStart, dragend: $root.dragEnd },
+									css: {
+										'opacity-50': $root.draggingCard() === $data,
+										'cursor-grab': !editing(),
+										'before:absolute before:inset-x-0 before:-top-1.5 before:h-0.5 before:rounded before:bg-blue-500': $root.isDropAt($parent, $index()),
+										'after:absolute after:inset-x-0 after:-bottom-1.5 after:h-0.5 after:rounded after:bg-blue-500': $index() === $parent.cards().length - 1 && $root.isDropAt($parent, $index() + 1)
+									}"
+								class="relative rounded border border-gray-200 bg-white px-3 py-2 shadow-sm">
 								<!-- ko ifnot: editing -->
 									<p data-bind="text: title" class="text-sm font-medium break-all"></p>
 									<p data-bind="visible: memo, text: memo" class="mt-1 text-xs whitespace-pre-wrap break-all text-gray-600"></p>
