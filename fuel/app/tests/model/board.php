@@ -91,6 +91,24 @@ class Test_Model_Board extends TestCase
 		$this->assertFalse(Model_Board::can_access(999999, $this->user_id));
 	}
 
+	public function test_自分のボードは取得できる()
+	{
+		$id = Model_Board::create($this->user_id, 'エンジニア採用');
+
+		$board = Model_Board::find($id, $this->user_id);
+
+		$this->assertSame($id, (int) $board['id']);
+		$this->assertSame('エンジニア採用', $board['title']);
+	}
+
+	public function test_他人のボードと存在しないボードは取得できない()
+	{
+		$id = Model_Board::create($this->other_user_id, '営業採用');
+
+		$this->assertNull(Model_Board::find($id, $this->user_id));
+		$this->assertNull(Model_Board::find(999999, $this->user_id));
+	}
+
 	public function test_名前を変えると更新日時も変わる()
 	{
 		$id = Model_Board::create($this->user_id, '古い名前');

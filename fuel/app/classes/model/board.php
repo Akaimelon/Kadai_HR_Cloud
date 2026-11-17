@@ -55,6 +55,30 @@ class Model_Board
 	}
 
 	/**
+	 * ボードを1件取得する
+	 *
+	 * 存在しないボードと他人のボードは、どちらも null を返す。
+	 * 呼び出し元が区別せずに404を返せるようにするため（can_access() と同じ）。
+	 *
+	 * @param  int $board_id
+	 * @param  int $user_id
+	 * @return array|null  id・title
+	 */
+	public static function find($board_id, $user_id)
+	{
+		if ( ! static::can_access($board_id, $user_id))
+		{
+			return null;
+		}
+
+		return \DB::select('id', 'title')
+			->from('boards')
+			->where('id', '=', $board_id)
+			->execute()
+			->current();
+	}
+
+	/**
 	 * そのユーザーがボードを操作してよいか
 	 *
 	 * 今は所有者だけが操作できる。存在しないボードも false を返し、
