@@ -218,9 +218,9 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 | POST | /api/boards/{id}/cards | カード作成（指定した列の末尾に追加） | title, memo, status_id | 201 |
 | PUT | /api/cards/{id} | カード編集 | title, memo | 200 |
 | PUT | /api/cards/{id}/move | カード移動 | status_id, sort_order（移動先の列で上から何番目に入れるか。0始まり） | 200 |
+| DELETE | /api/cards/{id} | カード削除（物理削除） | | 204 |
 
 カード移動の sort_order は「移動先の列での挿入位置」で、範囲外の値（別タブで枚数がずれた場合など）は末尾に丸める。移動のたびに Kanban\CardMover が移動元と移動先の列を0からの連番に振り直すため、連番を保つ責任はサーバ側だけが持つ。
-| DELETE | /api/cards/{id} | カード削除（物理削除） | | 204 |
 
 全APIで共通のエラーは、未ログインが401、他人のボードやカードが404、入力エラーが422、CSRFトークン不一致が403とする。他人のリソースに403ではなく404を返すのは、そのIDが存在すること自体を知らせないため。
 
