@@ -8,21 +8,23 @@
 	<title><?php echo $title; ?> | 採用カンバン</title>
 	<?php echo Asset::css('app.css'); ?>
 </head>
-<body class="min-h-screen bg-gray-50 text-gray-900">
-	<header class="border-b border-gray-200 bg-white">
-		<div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-			<strong class="text-lg">採用カンバン</strong>
-			<?php if (Guard::user_id() !== null): ?>
-				<form method="post" action="<?php echo Uri::create('auth/logout'); ?>">
-					<?php echo Form::csrf(); ?>
-					<button type="submit" class="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">ログアウト</button>
-				</form>
-			<?php endif; ?>
+<body class="min-h-screen bg-canvas font-sans text-ink">
+	<?php if ($user_email !== ''): ?>
+		<div class="flex min-h-screen flex-col">
+			<?php echo render('_header', array('user_email' => $user_email)); ?>
+			<?php echo $content; ?>
 		</div>
-	</header>
-	<main class="mx-auto max-w-5xl px-4 py-8">
-		<h1 class="mb-6 text-2xl font-bold"><?php echo $title; ?></h1>
-		<?php echo $content; ?>
-	</main>
+	<?php else: ?>
+		<?php // ログイン前の画面（ログイン・新規登録）は、ヘッダーを出さずにフォームを中央に置く ?>
+		<div class="flex min-h-screen items-center justify-center px-4 py-12">
+			<main class="flex w-full max-w-[420px] flex-col gap-6">
+				<div class="flex items-center justify-center gap-2.5 text-lg font-bold">
+					<?php echo render('_logo', array('size' => 30)); ?>
+					<span>採用カンバン</span>
+				</div>
+				<?php echo $content; ?>
+			</main>
+		</div>
+	<?php endif; ?>
 </body>
 </html>
