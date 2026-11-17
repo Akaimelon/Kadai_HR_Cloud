@@ -25,12 +25,16 @@ class Controller_Boards extends Controller_Base
 		foreach (Model_Status::find_all() as $status)
 		{
 			$columns[] = array(
+				'id'    => (int) $status['id'],
 				'title' => $status['title'],
 				'class' => \Config::get('kanban.status_classes.'.$status['id'], \Config::get('kanban.default_status_class')),
 			);
 		}
 
 		$this->template->title = $board['title'];
-		$this->template->content = \View::forge('boards/view', array('columns' => $columns));
+		$this->template->content = \View::forge('boards/view', array(
+			'board_id' => (int) $board['id'],
+			'columns'  => $columns,
+		));
 	}
 }
