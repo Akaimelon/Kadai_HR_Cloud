@@ -3,10 +3,16 @@ class Controller_Api_Boards extends Controller_Api_Base
 {
 	public function get_index()
 	{
+		$counts = Model_Board::count_cards_by_status(Guard::user_id());
+		$boards = array();
+		foreach (Model_Board::find_by_owner(Guard::user_id()) as $board)
+		{
+			$board['status_counts'] = \Arr::get($counts, $board['id'], array());
+			$boards[] = $this->to_json($board);
+		}
+
 		// 配列のまま返すと、0件のとき Controller_Rest が 204（本文なし）にするため、boards に包む
-		return $this->response(array(
-			'boards' => array_map(array($this, 'to_json'), Model_Board::find_by_owner(Guard::user_id())),
-		));
+		return $this->response(array('boards' => $boards));
 	}
 
 	public function post_index()
@@ -14,9 +20,12 @@ class Controller_Api_Boards extends Controller_Api_Base
 		$title = $this->validated_title();
 		$id = Model_Board::create(Guard::user_id(), $title);
 
-		return $this->response(array(
-			'board' => $this->to_json(array('id' => $id, 'title' => $title, 'card_count' => 0)),
-		), 201);
+		// 画面に更新日時を出すため、DBに入った updated_at ごと返す
+		$board = Model_Board::find($id, Guard::user_id());
+		$board['card_count'] = 0;
+		$board['status_counts'] = array();
+
+		return $this->response(array('board' => $this->to_json($board)), 201);
 	}
 
 	/**
@@ -27,9 +36,10 @@ class Controller_Api_Boards extends Controller_Api_Base
 		$this->ensure_accessible($id);
 		$title = $this->validated_title();
 		Model_Board::rename($id, Guard::user_id(), $title);
+		$board = Model_Board::find($id, Guard::user_id());
 
 		return $this->response(array(
-			'board' => array('id' => (int) $id, 'title' => $title),
+			'board' => array('id' => (int) $board['id'], 'title' => $board['title'], 'updated_at' => $board['updated_at']),
 		));
 	}
 
@@ -85,15 +95,26 @@ class Controller_Api_Boards extends Controller_Api_Base
 	/**
 	 * DBの値は文字列で返ってくるので、JSで数として扱えるように型を揃える
 	 *
-	 * @param  array $board
+	 * status_counts を {選考ステージID: 件数} のオブジェクトにしないのは、
+	 * PHPの配列が空のときに、JSONではオブジェクトではなく配列になってしまうため
+	 *
+	 * @param  array $board  id・title・updated_at・card_count・status_counts（選考ステージIDをキーにした件数）
 	 * @return array
 	 */
 	protected function to_json(array $board)
 	{
+		$status_counts = array();
+		foreach ($board['status_counts'] as $status_id => $count)
+		{
+			$status_counts[] = array('status_id' => (int) $status_id, 'count' => (int) $count);
+		}
+
 		return array(
-			'id'         => (int) $board['id'],
-			'title'      => $board['title'],
-			'card_count' => (int) $board['card_count'],
+			'id'            => (int) $board['id'],
+			'title'         => $board['title'],
+			'updated_at'    => $board['updated_at'],
+			'card_count'    => (int) $board['card_count'],
+			'status_counts' => $status_counts,
 		);
 	}
 }
