@@ -104,6 +104,23 @@ class Model_Board
 	}
 
 	/**
+	 * ボードの更新日時を今にする
+	 *
+	 * カードを操作したボードを一覧の上に出すため（設計書4章）。
+	 * 権限の確認は、カードを操作する呼び出し元で済ませている前提にする。
+	 *
+	 * @param  int $board_id
+	 * @return void
+	 */
+	public static function touch($board_id)
+	{
+		\DB::update('boards')
+			->value('updated_at', date('Y-m-d H:i:s'))
+			->where('id', '=', $board_id)
+			->execute();
+	}
+
+	/**
 	 * ボードを削除する。カードは外部キーの ON DELETE CASCADE で一緒に消える
 	 *
 	 * rename() と同じ理由で、ここでも can_access() を確認する。
