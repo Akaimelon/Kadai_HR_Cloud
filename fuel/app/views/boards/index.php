@@ -10,7 +10,7 @@
 		<div class="flex flex-wrap items-end gap-3">
 			<div class="flex flex-[1_1_320px] flex-col gap-1.5">
 				<label for="new-board-title" class="text-[13px] font-bold">新しいボード</label>
-				<input type="text" id="new-board-title" maxlength="100" placeholder="ボード名（例：2027年度 夏インターン）"
+				<input type="text" id="new-board-title" maxlength="<?php echo Model_Board::TITLE_MAX_LENGTH; ?>" placeholder="ボード名（例：2027年度 夏インターン）"
 					data-bind="textInput: newTitle"
 					class="min-h-11 w-full rounded-lg border border-field px-3 py-2.5 text-sm text-ink focus:border-primary focus:outline-none">
 			</div>
@@ -47,7 +47,7 @@
 			<!-- ko if: editing -->
 				<?php // submit バインディングはフォーム要素を渡すため、どのボードかを $data で渡す ?>
 				<form data-bind="submit: function () { $parent.saveTitle($data); }" class="flex flex-col gap-2">
-					<input type="text" maxlength="100" aria-label="ボード名"
+					<input type="text" maxlength="<?php echo Model_Board::TITLE_MAX_LENGTH; ?>" aria-label="ボード名"
 						data-bind="textInput: draftTitle, hasFocus: true"
 						class="min-h-10 w-full rounded-lg border border-field px-3 py-2 text-[15px] text-ink focus:border-primary focus:outline-none">
 					<p role="alert" data-bind="visible: renameError, text: renameError" style="display: none;" class="m-0 text-[12.5px] text-danger"></p>

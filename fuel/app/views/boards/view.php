@@ -7,6 +7,7 @@
 	data-title="<?php echo $board['title']; ?>"
 	data-updated-at="<?php echo $board['updated_at']; ?>"
 	data-statuses="<?php echo $statuses_json; ?>"
+	data-card-title-max="<?php echo Model_Card::TITLE_MAX_LENGTH; ?>"
 	class="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-[18px] px-6 pt-5 pb-12">
 	<nav aria-label="パンくずリスト" class="flex min-w-0 items-center gap-2 text-[13px] text-muted">
 		<a href="<?php echo Uri::create('boards'); ?>" class="flex-none text-primary no-underline hover:text-primary-dark">ボード一覧</a>
@@ -28,7 +29,7 @@
 			<!-- ko if: renaming -->
 				<form data-bind="submit: saveTitle" class="flex w-[min(640px,100%)] flex-col gap-1.5">
 					<div class="flex items-center gap-2">
-						<input type="text" maxlength="100" aria-label="ボード名"
+						<input type="text" maxlength="<?php echo Model_Board::TITLE_MAX_LENGTH; ?>" aria-label="ボード名"
 							data-bind="textInput: draftTitle, hasFocus: true"
 							class="min-h-11 min-w-0 flex-1 rounded-lg border border-field bg-white px-3 py-2 text-lg font-bold text-ink focus:border-primary focus:outline-none">
 						<button type="submit" data-bind="disable: saving"
@@ -126,9 +127,9 @@
 				<div class="flex flex-col gap-1.5">
 					<div class="flex items-baseline justify-between">
 						<label for="card-title" class="text-[13px] font-bold">応募者名<span class="text-danger"> *</span></label>
-						<span data-bind="text: dialog.title().length + ' / 100'" class="text-xs text-muted"></span>
+						<span data-bind="text: dialog.titleCounter" class="text-xs text-muted"></span>
 					</div>
-					<input type="text" id="card-title" maxlength="100" placeholder="例：山田 太郎" autofocus
+					<input type="text" id="card-title" maxlength="<?php echo Model_Card::TITLE_MAX_LENGTH; ?>" placeholder="例：山田 太郎" autofocus
 						data-bind="textInput: dialog.title"
 						class="min-h-[46px] w-full rounded-lg border border-field px-3 py-2.5 text-[15px] text-ink focus:border-primary focus:outline-none">
 				</div>
@@ -145,7 +146,7 @@
 				</div>
 				<div class="flex flex-col gap-1.5">
 					<label for="card-memo" class="text-[13px] font-bold">メモ</label>
-					<textarea id="card-memo" rows="5" maxlength="1000" placeholder="面接日程や評価のメモなど"
+					<textarea id="card-memo" rows="5" maxlength="<?php echo Model_Card::MEMO_MAX_LENGTH; ?>" placeholder="面接日程や評価のメモなど"
 						data-bind="textInput: dialog.memo"
 						class="w-full resize-y rounded-lg border border-field px-3 py-2.5 text-sm leading-[1.7] text-ink focus:border-primary focus:outline-none"></textarea>
 				</div>

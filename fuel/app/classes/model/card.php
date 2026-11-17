@@ -8,6 +8,13 @@
 class Model_Card
 {
 	/**
+	 * 応募者名とメモの最大文字数。APIの入力チェックと画面の maxlength・文字数の表示で同じ値を使うため、ここだけに書く。
+	 * 応募者名は cards.title の varchar(100) に合わせる
+	 */
+	const TITLE_MAX_LENGTH = 100;
+	const MEMO_MAX_LENGTH = 1000;
+
+	/**
 	 * ボードのカードを、列ごと・列の上から順に取得する
 	 *
 	 * @param  int $board_id

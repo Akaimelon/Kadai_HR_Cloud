@@ -8,6 +8,8 @@
 	const boardsUrl = root.getAttribute('data-boards-url');
 	// 選考ステージの名前と色（id・title・dot・chip）。モーダルに出すため、サーバーが出したものを使う
 	const statuses = JSON.parse(root.getAttribute('data-statuses'));
+	// 応募者名の上限。入力チェックと同じ値をサーバーから受け取り、JSに数を書かない
+	const cardTitleMax = Number(root.getAttribute('data-card-title-max'));
 	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 	/**
@@ -77,6 +79,10 @@
 		self.error = ko.observable('');
 		self.status = ko.pureComputed(function () {
 			return self.column().status;
+		});
+
+		self.titleCounter = ko.pureComputed(function () {
+			return self.title().length + ' / ' + cardTitleMax;
 		});
 	}
 

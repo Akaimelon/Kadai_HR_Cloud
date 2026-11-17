@@ -80,7 +80,7 @@ class Controller_Api_Boards extends Controller_Api_Base
 		$val->add('title', 'ボード名')
 			->add_rule('trim')
 			->add_rule('required')
-			->add_rule('max_length', 100);
+			->add_rule('max_length', Model_Board::TITLE_MAX_LENGTH);
 		$val->set_message('required', ':labelを入力してください');
 		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
 
