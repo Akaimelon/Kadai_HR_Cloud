@@ -1,16 +1,16 @@
 (function () {
 	'use strict';
 
-	var root = document.getElementById('boards');
-	var apiUrl = root.getAttribute('data-api-url');
-	var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+	const root = document.getElementById('boards');
+	const apiUrl = root.getAttribute('data-api-url');
+	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 	/**
 	 * 失敗はどれも、画面にそのまま出せるメッセージで reject する。
 	 * 呼び出し側が、通信エラーか入力エラーかを区別せずに error.message を表示できるようにするため
 	 */
 	function callApi(method, url, body) {
-		var options = {
+		const options = {
 			method: method,
 			credentials: 'same-origin',
 			headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }
@@ -47,7 +47,7 @@
 	}
 
 	function BoardsViewModel() {
-		var self = this;
+		const self = this;
 
 		self.boards = ko.observableArray([]);
 		self.loaded = ko.observable(false);
@@ -118,7 +118,7 @@
 		};
 
 		self.deleteBoard = function (board) {
-			var message = '「' + board.title() + '」を削除します。応募' + board.cardCount + '件も削除されます。よろしいですか？';
+			const message = '「' + board.title() + '」を削除します。応募' + board.cardCount + '件も削除されます。よろしいですか？';
 			if (self.saving() || !window.confirm(message)) {
 				return;
 			}
@@ -129,7 +129,7 @@
 		};
 	}
 
-	var viewModel = new BoardsViewModel();
+	const viewModel = new BoardsViewModel();
 	ko.applyBindings(viewModel, root);
 	viewModel.load();
 })();
