@@ -81,6 +81,25 @@
 			return self.column().status;
 		});
 
+		// 作成と編集で同じモーダルを使い、文言だけを切り替える
+		self.isEdit = ko.pureComputed(function () {
+			return self.card() !== null;
+		});
+		self.heading = ko.pureComputed(function () {
+			return self.isEdit() ? 'カードを編集' : 'カードを作成';
+		});
+		self.submitLabel = ko.pureComputed(function () {
+			return self.isEdit() ? '保存' : '作成';
+		});
+		self.statusLabel = ko.pureComputed(function () {
+			return self.isEdit() ? '選考ステージ' : '追加する列';
+		});
+		// 選考ステージはモーダルでは変えられないので、変え方と、どの列に入るかを添える
+		self.statusHint = ko.pureComputed(function () {
+			return self.isEdit()
+				? 'ボード上でカードをドラッグして変更します'
+				: '押した「カードを追加」の列に入ります。上部のボタンからは' + firstColumn.status.title + 'に入ります';
+		});
 		self.titleCounter = ko.pureComputed(function () {
 			return self.title().length + ' / ' + cardTitleMax;
 		});
