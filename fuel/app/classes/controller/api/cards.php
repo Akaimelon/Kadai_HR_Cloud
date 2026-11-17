@@ -159,20 +159,6 @@ class Controller_Api_Cards extends Controller_Api_Base
 	}
 
 	/**
-	 * 他人のボードにも404を返すのは、そのIDのボードがあること自体を知らせないため（設計書5章）
-	 *
-	 * @param  string $board_id
-	 * @throws HttpJsonException
-	 */
-	protected function ensure_board_accessible($board_id)
-	{
-		if ( ! Model_Board::can_access($board_id, Guard::user_id()))
-		{
-			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
-		}
-	}
-
-	/**
 	 * 存在しないカードと他人のカードを区別せず404にするのは、ボードと同じく、そのIDがあること自体を知らせないため
 	 *
 	 * @param  string $id

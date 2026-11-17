@@ -33,7 +33,7 @@ class Controller_Api_Boards extends Controller_Api_Base
 	 */
 	public function put_item($id)
 	{
-		$this->ensure_accessible($id);
+		$this->ensure_board_accessible($id);
 		$title = $this->validated_title();
 		Model_Board::rename($id, Guard::user_id(), $title);
 		$board = Model_Board::find($id, Guard::user_id());
@@ -48,24 +48,10 @@ class Controller_Api_Boards extends Controller_Api_Base
 	 */
 	public function delete_item($id)
 	{
-		$this->ensure_accessible($id);
+		$this->ensure_board_accessible($id);
 		Model_Board::delete($id, Guard::user_id());
 
 		return $this->response(array(), 204);
-	}
-
-	/**
-	 * 他人のボードにも404を返すのは、そのIDのボードがあること自体を知らせないため（設計書5章）
-	 *
-	 * @param  string $id
-	 * @throws HttpJsonException
-	 */
-	protected function ensure_accessible($id)
-	{
-		if ( ! Model_Board::can_access($id, Guard::user_id()))
-		{
-			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
-		}
 	}
 
 	/**
