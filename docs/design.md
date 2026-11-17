@@ -126,11 +126,13 @@ erDiagram
         int id PK
         varchar email
         varchar password_hash
+        datetime created_at
     }
     boards {
         int id PK
         int owner_id FK
         varchar title
+        datetime updated_at
     }
     statuses {
         int id PK
@@ -145,6 +147,7 @@ erDiagram
         text memo
         int sort_order
         datetime created_at
+        datetime updated_at
     }
 ```
 
@@ -278,7 +281,7 @@ sequenceDiagram
 
 ### カード移動
 
-画面を先に動かしてからAPIで保存し、失敗したら元に戻す。サーバ側は所有者確認と並び替えを1つのトランザクションで行う。
+画面を先に動かしてからAPIで保存し、失敗したら元に戻す。サーバ側は、操作してよいカードかを Model_Board::can_access() で確かめてから、並び替えを1つのトランザクションで行う。同じボードで同時に移動されても連番が崩れないよう、トランザクションの最初にボードの行を FOR UPDATE でロックする。
 
 ```mermaid
 sequenceDiagram
@@ -291,18 +294,20 @@ sequenceDiagram
     K->>K: observableArrayを更新して即時に再描画
     K->>A: PUT /api/cards/{id}/move（status_id, sort_order, CSRFトークン）
     A->>A: before()でログインとトークンを確認
-    A->>D: カードをboards.owner_idで絞って取得
+    A->>D: Model_Card::find()でカードを取得し、can_access()でボードの所有者を確認
     alt 自分のカードでない
-        D-->>A: 0件
+        D-->>A: 見つからない・所有者でない
         A-->>K: 404
         K->>K: カードを元の位置に戻してトーストで知らせる
     else 自分のカード
+        A->>A: status_idとsort_orderを検証（statusesにないIDは422）
         A->>S: move(card, status_id, sort_order)
         S->>D: \DB::start_transaction()
-        S->>D: 移動元の列のsort_orderを詰める
-        S->>D: 移動先の列のsort_orderを1つずつずらす
-        S->>D: カードのstatus_idとsort_order、ボードのupdated_atを更新
-        S->>D: \DB::commit_transaction()
+        S->>D: SELECT ... FROM boards ... FOR UPDATE（ボードの行をロック）
+        S->>D: 移動先の列を、挿入位置に入れた順で0から振り直す
+        S->>D: 列が変わったら、移動元の列も0から振り直す
+        S->>D: カードのstatus_idとupdated_at、ボードのupdated_atを更新
+        S->>D: \DB::commit_transaction()（失敗したらrollback）
         A-->>K: 200（更新後のカード）
     end
 ```
@@ -317,14 +322,14 @@ sequenceDiagram
 | --- | --- | --- |
 | SQLインジェクション | DBクラスのクエリビルダで値をバインドし、SQLを文字列連結しない | 全Model |
 | XSS | ViewのエスケープとknockoutのtextバインディングでHTMLとして出力しない。htmlバインディングは使わない | views、boards.js、board.js |
-| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、ui.js の callApi() がfetchのたびに`X-CSRF-Token`ヘッダで送る（board.js・boards.js はこれを使う）。どちらもbefore()で`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php、public/assets/js/ui.js |
+| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、ui.js の callApi() がfetchのたびに`X-CSRF-Token`ヘッダで送る（board.js・boards.js はこれを使う）。どちらもbefore()からGuard::check()を呼び、`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Guard、Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php、public/assets/js/ui.js |
 | セッション固定化 | ログイン成功時にSession::destroy()→Session::create()でセッションを作り直してからuser_idを保存する。Session::rotate()はfileドライバで古いIDに新しいIDへの転送先を残すため、ログイン前に仕込まれたIDでもログイン後のセッションに入れてしまう（ADR 0001） | Controller_Auth::post_login |
 | パスワード漏えい | password_hashで保存し、password_verifyで照合する。平文はログにも残さない | Model_User |
 | アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す。登録画面の「すでに登録されています」からは登録済みのメールアドレスがわかるが、防ぐにはメールでの本人確認が要るため、課題の範囲外として対応しない | Controller_Auth::post_login |
 | 他者リソースへのアクセス | 判定をModel_Board::can_access()にまとめ、すべての取得・更新でboards.owner_idとログイン中のuser_idを条件に入れる | 全Model |
 | Cookieの盗用 | config.phpのcookieでHttpOnlyとSameSite=Laxを有効にし、HTTPS環境ではSecureも付ける。FuelPHP 1.8のCookieクラスはSameSiteを渡せないため、classes/cookie.phpでCookie::set()を上書きし、bootstrap.phpでコアのCookieと差し替える。session.phpはfileドライバにして、CookieにはセッションIDだけを入れる（ADR 0003） | config/config.php、classes/cookie.php、bootstrap.php、config/session.php |
 | 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、config.phpのlanguageをjaにし、lang/ja/validation.phpに日本語のメッセージを置く。画面ごとに文を変えるもの（「画面を再読み込みしてください」など）だけset_message()で書く。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
-| 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数から読む。初めて暗号化（セッションなど）を使うとFuelPHPが鍵の入った config/crypt.php を自動で作るため、.gitignoreに入れてコミットしない | config/db.php、.gitignore |
+| 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数（DB_HOST・DB_NAME・DB_USER・DB_PASSWORD）から読む。初めて暗号化（セッションなど）を使うとFuelPHPが鍵の入った config/crypt.php を自動で作るため、.gitignoreに入れてコミットしない | config/production/db.php、config/staging/db.php、.gitignore |
 
 ### テスト
 
@@ -367,6 +372,7 @@ kanban-todo/
 │       ├── classes/
 │       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
 │       │   ├── guard.php          # ログイン・CSRFトークンの確認、ログイン中のユーザー
+│       │   ├── httpjsonexception.php # APIのエラーをJSONで返す例外（before()から処理を止める）
 │       │   ├── controller/
 │       │   │   ├── base.php       # 画面用の基底。before()でログイン・CSRF確認
 │       │   │   ├── auth.php       # 登録・ログイン・ログアウト
@@ -379,12 +385,15 @@ kanban-todo/
 │       │   ├── model/
 │       │   │   ├── user.php
 │       │   │   ├── board.php
-│       │   │   └── card.php
+│       │   │   ├── card.php
+│       │   │   └── status.php     # 選考ステージ（読み取りだけ）
 │       │   └── kanban/
 │       │       └── cardmover.php  # namespace Kanban。並び替え処理
 │       ├── config/
 │       │   ├── config.php         # Cookie属性・CSRFトークンの有効期限・言語（ja）
-│       │   ├── db.php
+│       │   ├── db.php             # 文字コード（utf8mb4）。接続先は環境ごとのフォルダ
+│       │   ├── development/db.php # Docker の db コンテナ
+│       │   ├── production/db.php  # 環境変数から読む（staging/ も同じ）
 │       │   ├── session.php
 │       │   ├── routes.php
 │       │   └── kanban.php         # 独自config
