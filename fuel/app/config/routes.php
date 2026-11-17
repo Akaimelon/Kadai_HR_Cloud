@@ -11,6 +11,7 @@ return array(
 	'auth/login'    => 'auth/login',
 	'auth/logout'   => 'auth/logout',
 	'boards' => 'boards/index',
+	'boards/(:num)' => 'boards/view/$1',
 
 	'api/boards' => 'api/boards/index',
 	'api/boards/(:num)' => 'api/boards/item/$1',
