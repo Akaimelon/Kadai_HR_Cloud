@@ -8,39 +8,7 @@
 	const boardsUrl = root.getAttribute('data-boards-url');
 	// 選考ステージの名前と色（id・title・dot・chip）。モーダルに出すため、サーバーが出したものを使う
 	const statuses = JSON.parse(root.getAttribute('data-statuses'));
-	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-	/**
-	 * 失敗はどれも、画面にそのまま出せるメッセージで reject する。
-	 * 呼び出し側が、通信エラーか入力エラーかを区別せずに error.message を表示できるようにするため
-	 */
-	function callApi(method, url, body) {
-		const options = {
-			method: method,
-			credentials: 'same-origin',
-			headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }
-		};
-		if (body !== undefined) {
-			options.headers['Content-Type'] = 'application/json';
-			options.body = JSON.stringify(body);
-		}
-
-		return fetch(url, options)
-			.catch(function () {
-				throw new Error('通信に失敗しました。ネットワークを確認してください');
-			})
-			.then(function (response) {
-				return response.json()
-					// サーバーのエラー画面（HTML）が返ってきたときも、同じメッセージで扱うため
-					.catch(function () { return {}; })
-					.then(function (data) {
-						if (!response.ok) {
-							throw new Error(data.error || 'エラーが発生しました。時間をおいてもう一度お試しください');
-						}
-						return data;
-					});
-			});
-	}
+	const callApi = KanbanUi.callApi;
 
 	function CardItem(data) {
 		const self = this;
@@ -106,25 +74,10 @@
 		self.confirmation = new KanbanUi.Confirmation();
 		self.toast = new KanbanUi.Toast();
 
-		/**
-		 * 保存中に別の操作を受け付けると、画面とサーバーの状態がずれるため、1つずつ送る。
-		 * カードやボード名を変えるとボードの更新日時も新しくなる（設計書4章）ので、成功したら見出しの表示も進める
-		 */
-		function save(request, onSuccess, onFailure) {
-			if (self.saving()) {
-				return;
-			}
-			self.saving(true);
-			self.toast.close();
-
-			request()
-				.then(function (data) {
-					onSuccess(data);
-					self.updatedAt(KanbanUi.now());
-				})
-				.catch(function (error) { onFailure(error.message); })
-				.then(function () { self.saving(false); });
-		}
+		// カードやボード名を変えるとボードの更新日時も新しくなる（設計書4章）ので、成功したら見出しの表示も進める
+		const save = KanbanUi.createSave(self.saving, self.toast, function () {
+			self.updatedAt(KanbanUi.now());
+		});
 
 		self.load = function () {
 			callApi('GET', apiUrl)
