@@ -25,12 +25,14 @@ class CardMover
 		$board_id = (int) $card['board_id'];
 		$from_status_id = (int) $card['status_id'];
 		$status_id = (int) $status_id;
+		$now = date('Y-m-d H:i:s');
 
 		\DB::start_transaction();
 		try
 		{
 			// 同じボードで同時に移動されると、両方が古い並び順を読んで連番が崩れる。
-			// ボードの行をロックして、同じボードの移動を1つずつ順番に処理させる
+			// ボードの行をロックして、同じボードの移動を1つずつ順番に処理させる。
+			// クエリビルダには FOR UPDATE を付ける方法がないため、ここだけ DB::query() で書く（値は param() でバインドする）
 			\DB::query('SELECT id FROM boards WHERE id = :id FOR UPDATE')
 				->param('id', $board_id)
 				->execute();
@@ -46,7 +48,6 @@ class CardMover
 				static::renumber(static::column_card_ids($board_id, $from_status_id, $card_id));
 			}
 
-			$now = date('Y-m-d H:i:s');
 			// updated_at は「最後に選考ステージや内容が変わった日時」なので、動かしたカードにだけ入れる（設計書4章）
 			\DB::update('cards')
 				->set(array(
@@ -60,7 +61,9 @@ class CardMover
 
 			\DB::commit_transaction();
 		}
-		catch (\Exception $e)
+		// \Exception だけだと、PHP 7 の \Error（TypeError など）が起きたときにロールバックされず、
+		// トランザクションが開いたまま残るため、両方の親の \Throwable で受ける
+		catch (\Throwable $e)
 		{
 			// false にすると、自分が始めた段だけを戻す。テストのように外側でトランザクションを始めていても、
 			// 外側まで巻き込んで戻さないため

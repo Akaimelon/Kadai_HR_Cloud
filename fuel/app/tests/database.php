@@ -10,7 +10,7 @@ class Test_Database extends TestCase
 {
 	public function test_テスト用DBに接続している()
 	{
-		$result = DB::query('SELECT DATABASE() AS name')->execute()->current();
+		$result = DB::select(DB::expr('DATABASE() AS name'))->execute()->current();
 
 		$this->assertSame('fuelphp_test', $result['name']);
 	}
