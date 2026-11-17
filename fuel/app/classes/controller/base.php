@@ -33,9 +33,6 @@ abstract class Controller_Base extends Controller_Template
 				throw new \HttpNoAccessException();
 		}
 
-		// ヘッダーに、どのアカウントでログインしているかを出すため。
-		// 未ログインを null でなく空文字にするのは、ビューに null を渡すとエスケープの処理で警告になるため
-		$user_id = Guard::user_id();
-		$this->template->user_email = $user_id === null ? '' : (string) Model_User::find_email($user_id);
+		$this->template->user_email = Guard::user_email();
 	}
 }

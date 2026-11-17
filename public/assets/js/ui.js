@@ -1,5 +1,5 @@
 /**
- * ボード一覧とカンバン画面で共通に使う、画面の部品。
+ * ボード一覧とカンバン画面で共通に使う、画面の部品と API の呼び出し。
  * knockout より後、boards.js・board.js より前に読み込む。
  */
 (function () {
@@ -77,9 +77,69 @@
 		};
 	}
 
+	/**
+	 * 失敗はどれも、画面にそのまま出せるメッセージで reject する。
+	 * 呼び出し側が、通信エラーか入力エラーかを区別せずに error.message を表示できるようにするため
+	 */
+	function callApi(method, url, body) {
+		const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+		const options = {
+			method: method,
+			credentials: 'same-origin',
+			headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }
+		};
+		if (body !== undefined) {
+			options.headers['Content-Type'] = 'application/json';
+			options.body = JSON.stringify(body);
+		}
+
+		return fetch(url, options)
+			.catch(function () {
+				throw new Error('通信に失敗しました。ネットワークを確認してください');
+			})
+			.then(function (response) {
+				return response.json()
+					// サーバーのエラー画面（HTML）が返ってきたときも、同じメッセージで扱うため
+					.catch(function () { return {}; })
+					.then(function (data) {
+						if (!response.ok) {
+							throw new Error(data.error || 'エラーが発生しました。時間をおいてもう一度お試しください');
+						}
+						return data;
+					});
+			});
+	}
+
+	/**
+	 * 保存の処理（save(request, onSuccess, onFailure)）を作る。
+	 * 保存中に別の操作を受け付けると、画面とサーバーの状態がずれるため、1つずつ送る。
+	 * afterSuccess は、画面ごとに成功のたびにしたいこと（カンバン画面の更新日時など）を渡す
+	 */
+	function createSave(saving, toast, afterSuccess) {
+		return function (request, onSuccess, onFailure) {
+			if (saving()) {
+				return;
+			}
+			saving(true);
+			toast.close();
+
+			request()
+				.then(function (data) {
+					onSuccess(data);
+					if (afterSuccess) {
+						afterSuccess();
+					}
+				})
+				.catch(function (error) { onFailure(error.message); })
+				.then(function () { saving(false); });
+		};
+	}
+
 	window.KanbanUi = {
 		Confirmation: Confirmation,
 		Toast: Toast,
+		callApi: callApi,
+		createSave: createSave,
 
 		/**
 		 * ボードの削除の確認に出す説明。ボード一覧とカンバン画面で同じ文にするため、ここで作る
