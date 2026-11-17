@@ -31,7 +31,8 @@ class CardMover
 		try
 		{
 			// 同じボードで同時に移動されると、両方が古い並び順を読んで連番が崩れる。
-			// ボードの行をロックして、同じボードの移動を1つずつ順番に処理させる
+			// ボードの行をロックして、同じボードの移動を1つずつ順番に処理させる。
+			// クエリビルダには FOR UPDATE を付ける方法がないため、ここだけ DB::query() で書く（値は param() でバインドする）
 			\DB::query('SELECT id FROM boards WHERE id = :id FOR UPDATE')
 				->param('id', $board_id)
 				->execute();
