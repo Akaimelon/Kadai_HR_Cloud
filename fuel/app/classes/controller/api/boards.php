@@ -67,6 +67,9 @@ class Controller_Api_Boards extends Controller_Api_Base
 			->add_rule('trim')
 			->add_rule('required')
 			->add_rule('max_length', 100);
+			->add_rule('max_length', Model_Board::TITLE_MAX_LENGTH);
+		$val->set_message('required', ':labelを入力してください');
+		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
 
 		if ( ! $val->run(array('title' => (string) \Input::json('title', ''))))
 		{

@@ -206,7 +206,7 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 | POST | /auth/logout | Controller_Auth::post_logout | セッション破棄してログインへ | 必要 |
 | GET | /boards | Controller_Boards::get_index | ボード一覧 | 必要 |
 | GET | /boards/{id} | Controller_Boards::get_view | カンバン画面 | 必要（所有者のみ） |
-| GET | （存在しないURL） | Controller_Welcome::action_404（routes.phpの`_404_`） | 404画面。他人のボードと存在しないボードもここに来る | 不要 |
+| GET | （存在しないURL） | Controller_Error::action_404（routes.phpの`_404_`） | 404画面。他人のボードと存在しないボードもここに来る | 不要 |
 
 ### 画面の作り
 
@@ -317,7 +317,7 @@ sequenceDiagram
 | --- | --- | --- |
 | SQLインジェクション | DBクラスのクエリビルダで値をバインドし、SQLを文字列連結しない | 全Model |
 | XSS | ViewのエスケープとknockoutのtextバインディングでHTMLとして出力しない。htmlバインディングは使わない | views、boards.js、board.js |
-| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、board.js・boards.jsがfetchのたびに`X-CSRF-Token`ヘッダで送る。どちらもbefore()で`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php |
+| CSRF | フォームはForm::csrf()で隠し項目にトークンを埋め込む。APIは画面の`<meta name="csrf-token">`にSecurity::fetch_token()の値を埋め込み、ui.js の callApi() がfetchのたびに`X-CSRF-Token`ヘッダで送る（board.js・boards.js はこれを使う）。どちらもbefore()で`hash_equals(Security::fetch_token(), 送られたトークン)`で比べ、不一致なら403。Security::check_token()は確認のたびにトークンを作り直し、同じ画面からの2回目のAPI呼び出しが403になるため使わない。config.phpのcsrf_expirationを1日にして、トークンを作り直さないようにする（ADR 0002） | Controller_Base::before()、Controller_Api_Base::before()、views/template.php、config/config.php、public/assets/js/ui.js |
 | セッション固定化 | ログイン成功時にSession::destroy()→Session::create()でセッションを作り直してからuser_idを保存する。Session::rotate()はfileドライバで古いIDに新しいIDへの転送先を残すため、ログイン前に仕込まれたIDでもログイン後のセッションに入れてしまう（ADR 0001） | Controller_Auth::post_login |
 | パスワード漏えい | password_hashで保存し、password_verifyで照合する。平文はログにも残さない | Model_User |
 | アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す。登録画面の「すでに登録されています」からは登録済みのメールアドレスがわかるが、防ぐにはメールでの本人確認が要るため、課題の範囲外として対応しない | Controller_Auth::post_login |
@@ -357,6 +357,9 @@ kanban-todo/
 │   ├── compose.noport.yml         # dbのポート公開を外す上書き（3306番が使用中の環境向け）
 │   ├── Dockerfile                 # PHPコンテナ（PHPUnit 5.7 を含む）
 │   └── db/                        # MySQLコンテナの設定
+├── docs/
+│   ├── design.md                  # 設計書（この文書）
+│   └── adr/                       # 判断の理由（ADR）
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
 │   └── app/
@@ -399,7 +402,7 @@ kanban-todo/
 ├── public/
 │   ├── index.php
 │   └── assets/
-│       ├── js/ui.js               # ダイアログの開閉・確認ダイアログ・トースト・日時の表示（2画面で共通）
+│       ├── js/ui.js               # APIの呼び出しと保存・ダイアログの開閉・確認ダイアログ・トースト・日時の表示（2画面で共通）
 │       ├── js/boards.js           # ボード一覧のViewModel
 │       ├── js/board.js            # カンバン画面のViewModel
 │       └── css/app.css        # Tailwindのビルド結果
