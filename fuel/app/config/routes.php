@@ -2,9 +2,7 @@
 return array(
 	// 未ログインなら Controller_Base がログイン画面にリダイレクトする
 	'_root_'  => 'boards/index',
-	'_404_'   => 'welcome/404',    // The main 404 route
-
-	'hello(/:name)?' => array('welcome/hello', 'name' => 'hello'),
+	'_404_'   => 'error/404',
 
 	// 以下は書かなくても URL からコントローラに振り分けられるが、どの URL があるかを一覧するために書く
 	'auth/register' => 'auth/register',

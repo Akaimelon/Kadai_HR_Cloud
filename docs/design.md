@@ -206,7 +206,7 @@ cardsには (board_id, status_id, sort_order) の複合インデックスを張�
 | POST | /auth/logout | Controller_Auth::post_logout | セッション破棄してログインへ | 必要 |
 | GET | /boards | Controller_Boards::get_index | ボード一覧 | 必要 |
 | GET | /boards/{id} | Controller_Boards::get_view | カンバン画面 | 必要（所有者のみ） |
-| GET | （存在しないURL） | Controller_Welcome::action_404（routes.phpの`_404_`） | 404画面。他人のボードと存在しないボードもここに来る | 不要 |
+| GET | （存在しないURL） | Controller_Error::action_404（routes.phpの`_404_`） | 404画面。他人のボードと存在しないボードもここに来る | 不要 |
 
 ### 画面の作り
 

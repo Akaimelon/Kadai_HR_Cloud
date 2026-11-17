@@ -47,6 +47,19 @@ class Guard
 	}
 
 	/**
+	 * ログイン中のユーザーのメールアドレス。ヘッダーに、どのアカウントでログインしているかを出すために使う。
+	 * 未ログインを null でなく空文字にするのは、ビューに null を渡すとエスケープの処理で警告になるため
+	 *
+	 * @return string
+	 */
+	public static function user_email()
+	{
+		$user_id = static::user_id();
+
+		return $user_id === null ? '' : (string) \Model_User::find_email($user_id);
+	}
+
+	/**
 	 * ログイン状態にする。セッション固定化を防ぐため、ログイン前のセッションを捨てて新しく作る。
 	 *
 	 * Session::rotate() は使わない。fileドライバの rotate() は古いIDのファイルに
