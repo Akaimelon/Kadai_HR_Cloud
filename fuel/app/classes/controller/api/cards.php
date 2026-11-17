@@ -21,19 +21,10 @@ class Controller_Api_Cards extends Controller_Api_Base
 	{
 		$this->ensure_board_accessible($board_id);
 
-		$val = \Validation::forge();
-		$val->add('title', '応募者名')
-			->add_rule('trim')
-			->add_rule('required')
-			->add_rule('max_length', 100);
-		$val->add('memo', 'メモ')
-			->add_rule('trim')
-			->add_rule('max_length', 1000);
+		$val = $this->card_validation();
 		$val->add('status_id', '選考ステージ')
 			->add_rule('required')
 			->add_rule('valid_string', array('numeric'));
-		$val->set_message('required', ':labelを入力してください');
-		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
 		$val->set_message('valid_string', ':labelが正しくありません。画面を再読み込みしてください');
 
 		$input = array(
@@ -52,14 +43,79 @@ class Controller_Api_Cards extends Controller_Api_Base
 			throw new HttpJsonException(422, '選考ステージが正しくありません。画面を再読み込みしてください');
 		}
 
-		// メモは任意なので、空欄は「メモなし」として NULL で保存する
-		$memo = $val->validated('memo') === '' ? null : $val->validated('memo');
-		$id = Model_Card::create($board_id, Guard::user_id(), $status_id, $val->validated('title'), $memo);
+		$id = Model_Card::create($board_id, Guard::user_id(), $status_id, $val->validated('title'), $this->validated_memo($val));
 
 		// 画面に登録日を出すため、DBに入った created_at ごと返す
 		return $this->response(array(
 			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
 		), 201);
+	}
+
+	/**
+	 * @param string $id
+	 */
+	public function put_item($id)
+	{
+		$this->ensure_card_accessible($id);
+
+		$val = $this->card_validation();
+		$input = array(
+			'title' => (string) \Input::json('title', ''),
+			'memo'  => (string) \Input::json('memo', ''),
+		);
+		if ( ! $val->run($input))
+		{
+			throw new HttpJsonException(422, implode("\n", $val->error_message()));
+		}
+
+		Model_Card::update($id, Guard::user_id(), $val->validated('title'), $this->validated_memo($val));
+
+		return $this->response(array(
+			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
+		));
+	}
+
+	/**
+	 * @param string $id
+	 */
+	public function delete_item($id)
+	{
+		$this->ensure_card_accessible($id);
+		Model_Card::delete($id, Guard::user_id());
+
+		return $this->response(array(), 204);
+	}
+
+	/**
+	 * 作成と編集で、応募者名とメモの決まりを同じにするため1か所にまとめる
+	 *
+	 * @return \Validation
+	 */
+	protected function card_validation()
+	{
+		$val = \Validation::forge();
+		$val->add('title', '応募者名')
+			->add_rule('trim')
+			->add_rule('required')
+			->add_rule('max_length', 100);
+		$val->add('memo', 'メモ')
+			->add_rule('trim')
+			->add_rule('max_length', 1000);
+		$val->set_message('required', ':labelを入力してください');
+		$val->set_message('max_length', ':labelは:param:1文字以内で入力してください');
+
+		return $val;
+	}
+
+	/**
+	 * メモは任意なので、空欄は「メモなし」として NULL で保存する
+	 *
+	 * @param  \Validation $val  run() が通ったもの
+	 * @return string|null
+	 */
+	protected function validated_memo(\Validation $val)
+	{
+		return $val->validated('memo') === '' ? null : $val->validated('memo');
 	}
 
 	/**
@@ -73,6 +129,20 @@ class Controller_Api_Cards extends Controller_Api_Base
 		if ( ! Model_Board::can_access($board_id, Guard::user_id()))
 		{
 			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
+		}
+	}
+
+	/**
+	 * 存在しないカードと他人のカードを区別せず404にするのは、ボードと同じく、そのIDがあること自体を知らせないため
+	 *
+	 * @param  string $id
+	 * @throws HttpJsonException
+	 */
+	protected function ensure_card_accessible($id)
+	{
+		if ( ! Model_Card::find($id, Guard::user_id()))
+		{
+			throw new HttpJsonException(404, 'カードが見つかりません。画面を再読み込みしてください');
 		}
 	}
 
