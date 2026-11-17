@@ -17,4 +17,5 @@ return array(
 	'api/boards/(:num)' => 'api/boards/item/$1',
 	'api/boards/(:num)/cards' => 'api/cards/index/$1',
 	'api/cards/(:num)' => 'api/cards/item/$1',
+	'api/cards/(:num)/move' => 'api/cards/move/$1',
 );

@@ -78,6 +78,46 @@ class Controller_Api_Cards extends Controller_Api_Base
 	/**
 	 * @param string $id
 	 */
+	public function put_move($id)
+	{
+		$this->ensure_card_accessible($id);
+
+		$val = \Validation::forge();
+		$val->add('status_id', '選考ステージ')
+			->add_rule('required')
+			->add_rule('valid_string', array('numeric'));
+		$val->add('sort_order', '移動先の位置')
+			->add_rule('required')
+			->add_rule('valid_string', array('numeric'));
+		// どちらも利用者が入力する値ではなく、画面が自動で送る値。おかしな値が届くのは画面が古いときなので、再読み込みを促す
+		$val->set_message('required', ':labelが正しくありません。画面を再読み込みしてください');
+		$val->set_message('valid_string', ':labelが正しくありません。画面を再読み込みしてください');
+
+		$input = array(
+			'status_id'  => (string) \Input::json('status_id', ''),
+			'sort_order' => (string) \Input::json('sort_order', ''),
+		);
+		if ( ! $val->run($input))
+		{
+			throw new HttpJsonException(422, implode("\n", $val->error_message()));
+		}
+
+		$status_id = (int) $val->validated('status_id');
+		if ( ! Model_Status::exists($status_id))
+		{
+			throw new HttpJsonException(422, '選考ステージが正しくありません。画面を再読み込みしてください');
+		}
+
+		\Kanban\CardMover::move(Model_Card::find($id, Guard::user_id()), $status_id, (int) $val->validated('sort_order'));
+
+		return $this->response(array(
+			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
+		));
+	}
+
+	/**
+	 * @param string $id
+	 */
 	public function delete_item($id)
 	{
 		$this->ensure_card_accessible($id);
