@@ -32,12 +32,23 @@ class Controller_Auth extends Controller_Base
 		}
 
 		$email = $val->validated('email');
+		$password = $val->validated('password');
 
-		$user_id = Model_User::exists($email) ? null : Model_User::create($email, $val->validated('password'));
+		$user_id = Model_User::exists($email) ? null : Model_User::create($email, $password);
 
 		if ($user_id === null)
 		{
-			return $this->show_form('auth/register', '新規登録', array('このメールアドレスはすでに登録されています'));
+			// 登録ボタンのダブルクリックでは、2回目のリクエストが1回目に作ったアカウントと重なる。
+			// 2回目はログイン前のCookieで届くため、ログイン済みかでは見分けられない。
+			// パスワードが合えば本人の再送信とみなしてログインさせ、「登録済み」のエラーを出さない
+			$user = Model_User::authenticate($email, $password);
+
+			if ($user === null)
+			{
+				return $this->show_form('auth/register', '新規登録', array('このメールアドレスはすでに登録されています'));
+			}
+
+			$user_id = $user['id'];
 		}
 
 		Guard::login($user_id);
