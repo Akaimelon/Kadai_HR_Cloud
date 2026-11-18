@@ -9,7 +9,7 @@
 | No. | 必須条件（課題条件シートより） | 実装方針 | 主な実装箇所 |
 | --- | --- | --- | --- |
 | 1 | サーバサイド言語はPHPで、フレームワークのFuelphpを使用すること | サーバ側はFuelPHPのMVCで実装する | fuel/app/ 全体 |
-| 2 | beforeメソッドを使う | 基底コントローラを画面用のController_Base（Controller_Templateを継承）とAPI用のController_Api_Base（Controller_Restを継承）の2つ作り、それぞれのbefore()でログイン確認とCSRF確認を行う。確認処理は1か所にまとめて両方から呼ぶ。未ログイン時は画面ならログイン画面へリダイレクト、APIなら401を返す | controller/base.php、controller/api/base.php |
+| 2 | beforeメソッドを使う | 基底コントローラを画面用のController_Base（Controller_Templateを継承）とAPI用のController_Api_Base（Controller_Restを継承）の2つ作り、それぞれのbefore()でログイン確認とCSRF確認を行う。確認処理は1か所にまとめて両方から呼ぶ。未ログイン時は画面ならログイン画面へリダイレクト、APIなら401を返す。どちらも例外（HttpRedirectException・HttpJsonException）で処理を止め、exitしない（Response::redirect()は中でexitするので使わない） | controller/base.php、controller/api/base.php |
 | 3 | configファイルをカスタマイズする | db.php（接続先）、session.php（セッションの保存先）、config.php（Cookie属性とCSRFトークンの有効期限）、routes.php（URL設計）を変更し、独自のkanban.php（status_idごとの表示色（点・札・列見出しの3種類）をTailwindのクラス名で持つ。選考ステージの名前と順番はDBのstatusesが持ち、configは見た目だけを持つ）を追加する | config/ |
 | 4 | sessionやcookieを使う | ログイン状態をSessionにuser_idで保持し、ログイン成功時にSession::destroy()とSession::create()でセッションを作り直す（ADR 0001）。セッションIDはCookieで受け渡し、Cookieの属性はconfig.phpのcookieで設定する（ADR 0003） | controller/auth.php、controller/base.php、config/session.php、config/config.php、classes/cookie.php |
 | 5 | ネームスペースを使う（実装していなくても、目的と使い方を口頭で説明できればOK） | カード移動の並び替え処理をKanban名前空間のクラス Kanban\CardMover に切り出す | classes/kanban/cardmover.php |
@@ -341,6 +341,7 @@ sequenceDiagram
 | 単体テスト（PHPUnit） | Model_Card | 他人のカードIDを指定すると取得・更新できない |
 | 単体テスト（PHPUnit） | Model_User | 正しいパスワードだけ認証が通る |
 | 単体テスト（PHPUnit） | Model_Board | 選考ステージ別の件数に、他人のボードのカードが入らない |
+| 単体テスト（PHPUnit） | Controller_Base・Controller_Auth | 未ログインで画面を開くとログイン画面へ、ログイン中にログイン画面を開くとボード一覧へ転送する |
 | 手動テスト | ログイン | 未ログインで/boardsを開くとログイン画面に戻る |
 | 手動テスト | 権限 | 別ユーザーのボードIDをURLに入れると404になる |
 | 手動テスト | D&D | 移動後に再読み込みしても位置が保たれる |
@@ -373,6 +374,7 @@ kanban-todo/
 │       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
 │       │   ├── guard.php          # ログイン・CSRFトークンの確認、ログイン中のユーザー
 │       │   ├── httpjsonexception.php # APIのエラーをJSONで返す例外（before()から処理を止める）
+│       │   ├── httpredirectexception.php # 画面を別のページへ転送する例外（before()から処理を止める）
 │       │   ├── controller/
 │       │   │   ├── base.php       # 画面用の基底。before()でログイン・CSRF確認
 │       │   │   ├── auth.php       # 登録・ログイン・ログアウト
