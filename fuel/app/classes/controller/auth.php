@@ -34,7 +34,14 @@ class Controller_Auth extends Controller_Base
 		$email = $val->validated('email');
 		$password = $val->validated('password');
 
-		$user_id = Model_User::exists($email) ? null : Model_User::create($email, $password);
+		$user_id = null;
+
+		if ( ! Model_User::exists($email))
+		{
+			// exists() のあとに同じメールアドレスの登録が割り込むと、create() も null を返す。
+			// そのときも、下の「登録済み」と同じ扱いにする
+			$user_id = Model_User::create($email, $password);
+		}
 
 		if ($user_id === null)
 		{
