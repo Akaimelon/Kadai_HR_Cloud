@@ -53,10 +53,11 @@
 		</div>
 	</div>
 
-	<?php // 列を狭くするとカードの文字が読めなくなるため、狭い画面では列を縮めずに横スクロールにする ?>
+	<?php // 列を狭くするとカードの文字が読めなくなるため、狭い画面では列を縮めずに横スクロールにする。
+		// 最小幅を200pxにするのは、ノートPC（横1280px前後）で5列が横スクロールなしで1画面に収まるようにするため ?>
 	<div class="overflow-x-auto pb-1.5">
 		<?php // 列の数は statuses テーブルの行数で決まるので、クラスに固定せずに数を入れる ?>
-		<div class="grid items-start gap-4" style="grid-template-columns: repeat(<?php echo count($statuses); ?>, minmax(260px, 1fr));">
+		<div class="grid items-start gap-4" style="grid-template-columns: repeat(<?php echo count($statuses); ?>, minmax(200px, 1fr));">
 			<?php foreach ($statuses as $status): ?>
 				<section aria-label="<?php echo $status['title']; ?>" data-status-id="<?php echo $status['id']; ?>"
 					data-bind="with: columns[<?php echo $status['id']; ?>]">
