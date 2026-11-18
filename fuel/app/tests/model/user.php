@@ -63,6 +63,32 @@ class Test_Model_User extends TestCase
 		$this->assertNotNull(Model_User::authenticate('taro@example.com', 'correct-password'));
 	}
 
+	/**
+	 * メールアドレス以外の UNIQUE 制約の違反（同じ 1062）を「登録済み」として隠さないことを確かめる。
+	 * users にはほかの UNIQUE 制約がないので、全行で同じ値になる列に一時的に UNIQUE を付けて起こす。
+	 * DDL はトランザクションを暗黙にコミットするので、このテストだけトランザクションの外で動かし、自分で後片付けする。
+	 */
+	public function test_メールアドレス以外のUNIQUE制約の違反は投げ直す()
+	{
+		DB::rollback_transaction();
+		DBUtil::add_fields('users', array('tmp_unique' => array('type' => 'tinyint', 'default' => 0)));
+		DBUtil::create_index('users', 'tmp_unique', 'users_tmp_unique', 'UNIQUE');
+
+		try
+		{
+			Model_User::create('taro@example.com', 'correct-password');
+
+			$this->setExpectedException('Database_Exception');
+			Model_User::create('hanako@example.com', 'correct-password');
+		}
+		finally
+		{
+			DB::delete('users')->where('email', 'in', array('taro@example.com', 'hanako@example.com'))->execute();
+			DBUtil::drop_fields('users', 'tmp_unique');
+			DB::start_transaction();
+		}
+	}
+
 	public function test_メールアドレスは大文字小文字と前後の空白を区別しない()
 	{
 		Model_User::create(' Taro@Example.com ', 'correct-password');

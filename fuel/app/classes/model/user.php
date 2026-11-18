@@ -80,7 +80,10 @@ class Model_User
 		}
 		catch (\Database_Exception $e)
 		{
-			if (static::is_duplicate_entry($e))
+			// 1062 は users のどの UNIQUE 制約の違反でも出るので、メールアドレスが本当に登録済みかを確かめる。
+			// エラー文の制約名では見分けない（MySQL 8.0 では 'users.users_email_unique' のように形が変わり、
+			// 入力されたメールアドレスも文に入るため）
+			if (static::is_duplicate_entry($e) and static::exists($email))
 			{
 				return null;
 			}
