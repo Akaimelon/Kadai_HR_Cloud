@@ -68,15 +68,17 @@ class Model_User
 	 */
 	public static function create($email, $password)
 	{
+		$row = array(
+			'email'         => static::normalize_email($email),
+			'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+			'created_at'    => date('Y-m-d H:i:s'),
+		);
+
+		// catch で受け止めたいのは INSERT の重複だけなので、try は INSERT だけを囲み、
+		// どの処理の失敗を扱っているのかを読んで分かるようにする
 		try
 		{
-			list($id) = \DB::insert('users')
-				->set(array(
-					'email'         => static::normalize_email($email),
-					'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-					'created_at'    => date('Y-m-d H:i:s'),
-				))
-				->execute();
+			list($id) = \DB::insert('users')->set($row)->execute();
 		}
 		catch (\Database_Exception $e)
 		{
