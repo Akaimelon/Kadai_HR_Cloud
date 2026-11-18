@@ -26,13 +26,23 @@ abstract class Controller_Base extends Controller_Template
 		switch (Guard::check($login_required, $token))
 		{
 			case Guard::NOT_LOGGED_IN:
-				\Response::redirect('auth/login');
-				break;
+				throw new HttpRedirectException('auth/login');
 
 			case Guard::INVALID_TOKEN:
 				throw new \HttpNoAccessException();
 		}
 
 		$this->template->user_email = Guard::user_email();
+	}
+
+	/**
+	 * Response::redirect() は中で exit してテストから呼べないため、Response を返して after() 以降をFuelPHPに任せる
+	 *
+	 * @param  string $uri  'boards' のようなアプリの中のパス
+	 * @return Response
+	 */
+	protected function redirect_to($uri)
+	{
+		return \Response::forge('', 302, array('Location' => \Uri::create($uri)));
 	}
 }

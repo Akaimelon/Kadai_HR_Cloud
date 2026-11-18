@@ -12,7 +12,7 @@ class Controller_Auth extends Controller_Base
 
 		if (in_array($this->request->action, $this->public_actions, true) and Guard::user_id() !== null)
 		{
-			\Response::redirect('boards');
+			throw new HttpRedirectException('boards');
 		}
 	}
 
@@ -39,7 +39,7 @@ class Controller_Auth extends Controller_Base
 		}
 
 		Guard::login(Model_User::create($email, $val->validated('password')));
-		\Response::redirect('boards');
+		return $this->redirect_to('boards');
 	}
 
 	public function get_login()
@@ -61,13 +61,13 @@ class Controller_Auth extends Controller_Base
 		}
 
 		Guard::login($user['id']);
-		\Response::redirect('boards');
+		return $this->redirect_to('boards');
 	}
 
 	public function post_logout()
 	{
 		Guard::logout();
-		\Response::redirect('auth/login');
+		return $this->redirect_to('auth/login');
 	}
 
 	/**
