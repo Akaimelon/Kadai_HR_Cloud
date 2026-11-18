@@ -20,6 +20,7 @@ class Test_Kanban_CardMover extends TestCase
 		DB::start_transaction();
 
 		$this->user_id = Model_User::create('taro@example.com', 'correct-password');
+		$this->assertNotNull($this->user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
 		$this->board_id = Model_Board::create($this->user_id, 'エンジニア採用');
 	}
 

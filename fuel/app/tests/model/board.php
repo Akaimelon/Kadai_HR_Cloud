@@ -21,6 +21,8 @@ class Test_Model_Board extends TestCase
 
 		$this->user_id = Model_User::create('taro@example.com', 'correct-password');
 		$this->other_user_id = Model_User::create('hanako@example.com', 'correct-password');
+		$this->assertNotNull($this->user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
+		$this->assertNotNull($this->other_user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
 	}
 
 	protected function tearDown()

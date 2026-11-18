@@ -37,7 +37,9 @@ class Test_Controller_Auth extends TestCase
 
 	public function test_ログイン中にログイン画面を開くとボード一覧へ転送する()
 	{
-		Guard::login(Model_User::create('taro@example.com', 'correct-password'));
+		$user_id = Model_User::create('taro@example.com', 'correct-password');
+		$this->assertNotNull($user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
+		Guard::login($user_id);
 
 		try
 		{
@@ -52,7 +54,9 @@ class Test_Controller_Auth extends TestCase
 
 	public function test_ログイン中ならボード一覧を開ける()
 	{
-		Guard::login(Model_User::create('taro@example.com', 'correct-password'));
+		$user_id = Model_User::create('taro@example.com', 'correct-password');
+		$this->assertNotNull($user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
+		Guard::login($user_id);
 
 		$response = Request::forge('boards/index')->execute()->response();
 
@@ -65,6 +69,7 @@ class Test_Controller_Auth extends TestCase
 	public function test_登録済みのメールアドレスでもパスワードが合えばログインしてボード一覧へ転送する()
 	{
 		$user_id = Model_User::create('taro@example.com', 'correct-password');
+		$this->assertNotNull($user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
 
 		$response = $this->post_register('taro@example.com', 'correct-password');
 
