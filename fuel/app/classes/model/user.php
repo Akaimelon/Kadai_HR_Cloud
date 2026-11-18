@@ -57,21 +57,52 @@ class Model_User
 	/**
 	 * ユーザーを登録する
 	 *
+	 * 呼び出し元で exists() を確かめていても、その直後に同じメールアドレスの登録が割り込むことがある
+	 * （登録ボタンのダブルクリックなど）。そのときは UNIQUE 制約で INSERT が拒否されるので、
+	 * 500エラーにせず null を返し、呼び出し元が「登録済み」として扱えるようにする。
+	 *
 	 * @param  string $email
 	 * @param  string $password 平文のパスワード
-	 * @return int  登録したユーザーのID
+	 * @return int|null  登録したユーザーのID。メールアドレスが登録済みならnull
+	 * @throws \Database_Exception  重複以外のDBエラー
 	 */
 	public static function create($email, $password)
 	{
-		list($id) = \DB::insert('users')
-			->set(array(
-				'email'         => static::normalize_email($email),
-				'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-				'created_at'    => date('Y-m-d H:i:s'),
-			))
-			->execute();
+		try
+		{
+			list($id) = \DB::insert('users')
+				->set(array(
+					'email'         => static::normalize_email($email),
+					'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+					'created_at'    => date('Y-m-d H:i:s'),
+				))
+				->execute();
+		}
+		catch (\Database_Exception $e)
+		{
+			if (static::is_duplicate_entry($e))
+			{
+				return null;
+			}
+
+			throw $e;
+		}
 
 		return (int) $id;
+	}
+
+	/**
+	 * UNIQUE 制約の違反（MySQL のエラー番号 1062）か
+	 *
+	 * 接続に mysqli ドライバを使っているので、getCode() に MySQL のエラー番号が入る。
+	 * PDO ドライバに変えると SQLSTATE（23000）が入り、ここでは見分けられなくなる。
+	 *
+	 * @param  \Database_Exception $e
+	 * @return bool
+	 */
+	protected static function is_duplicate_entry(\Database_Exception $e)
+	{
+		return (int) $e->getCode() === 1062;
 	}
 
 	/**

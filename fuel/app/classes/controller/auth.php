@@ -33,12 +33,14 @@ class Controller_Auth extends Controller_Base
 
 		$email = $val->validated('email');
 
-		if (Model_User::exists($email))
+		$user_id = Model_User::exists($email) ? null : Model_User::create($email, $val->validated('password'));
+
+		if ($user_id === null)
 		{
 			return $this->show_form('auth/register', '新規登録', array('このメールアドレスはすでに登録されています'));
 		}
 
-		Guard::login(Model_User::create($email, $val->validated('password')));
+		Guard::login($user_id);
 		return $this->redirect_to('boards');
 	}
 

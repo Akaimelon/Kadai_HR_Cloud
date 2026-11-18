@@ -52,6 +52,17 @@ class Test_Model_User extends TestCase
 		$this->assertTrue(password_verify('correct-password', $user['password_hash']));
 	}
 
+	/**
+	 * exists() の確認をすり抜けて同じメールアドレスの INSERT が届いた場合（同時の登録）を、create() を2回呼んで再現する
+	 */
+	public function test_登録済みのメールアドレスで登録するとnullを返す()
+	{
+		Model_User::create('taro@example.com', 'correct-password');
+
+		$this->assertNull(Model_User::create('Taro@Example.com', 'other-password'));
+		$this->assertNotNull(Model_User::authenticate('taro@example.com', 'correct-password'));
+	}
+
 	public function test_メールアドレスは大文字小文字と前後の空白を区別しない()
 	{
 		Model_User::create(' Taro@Example.com ', 'correct-password');
