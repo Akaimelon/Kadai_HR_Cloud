@@ -2,7 +2,6 @@
 
 namespace Fuel\Migrations;
 
-
 class Create_users
 {
 	public function up()
@@ -14,7 +13,6 @@ class Create_users
 			'created_at'    => array('type' => 'datetime'),
 		), array('id'), true, 'InnoDB');
 
-		
 		\DBUtil::create_index('users', 'email', 'users_email_unique', 'UNIQUE');
 	}
 
