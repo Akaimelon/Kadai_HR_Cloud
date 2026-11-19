@@ -7,6 +7,8 @@ require COREPATH.'bootstrap.php';
 	// Example: 'View' => APPPATH.'classes/view.php',
 	// SameSite属性を付けるため、Cookie クラスを変更
 	'Cookie' => APPPATH.'classes/cookie.php',
+	// API でJSONの本文を確かめるため、Input クラスを変更
+	'Input' => APPPATH.'classes/input.php',
 ));
 
 // Register the autoloader

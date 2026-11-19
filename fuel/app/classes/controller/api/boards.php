@@ -68,7 +68,7 @@ class Controller_Api_Boards extends Controller_Api_Base
 			->add_rule('required')
 			->add_rule('max_length', Model_Board::TITLE_MAX_LENGTH);
 
-		if ( ! $val->run(array('title' => (string) \Input::json('title', ''))))
+		if ( ! $val->run($this->json_strings(array('title'))))
 		{
 			throw new HttpJsonException(422, implode("\n", $val->error_message()));
 		}

@@ -27,12 +27,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 			->add_rule('valid_string', array('numeric'));
 		$val->set_message('valid_string', ':labelが正しくありません。画面を再読み込みしてください');
 
-		$input = array(
-			'title'     => (string) \Input::json('title', ''),
-			'memo'      => (string) \Input::json('memo', ''),
-			'status_id' => (string) \Input::json('status_id', ''),
-		);
-		if ( ! $val->run($input))
+		if ( ! $val->run($this->json_strings(array('title', 'memo', 'status_id'))))
 		{
 			throw new HttpJsonException(422, implode("\n", $val->error_message()));
 		}
@@ -59,11 +54,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 		$this->ensure_card_accessible($id);
 
 		$val = $this->card_validation();
-		$input = array(
-			'title' => (string) \Input::json('title', ''),
-			'memo'  => (string) \Input::json('memo', ''),
-		);
-		if ( ! $val->run($input))
+		if ( ! $val->run($this->json_strings(array('title', 'memo'))))
 		{
 			throw new HttpJsonException(422, implode("\n", $val->error_message()));
 		}
@@ -93,11 +84,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 		$val->set_message('required', ':labelが正しくありません。画面を再読み込みしてください');
 		$val->set_message('valid_string', ':labelが正しくありません。画面を再読み込みしてください');
 
-		$input = array(
-			'status_id'  => (string) \Input::json('status_id', ''),
-			'sort_order' => (string) \Input::json('sort_order', ''),
-		);
-		if ( ! $val->run($input))
+		if ( ! $val->run($this->json_strings(array('status_id', 'sort_order'))))
 		{
 			throw new HttpJsonException(422, implode("\n", $val->error_message()));
 		}

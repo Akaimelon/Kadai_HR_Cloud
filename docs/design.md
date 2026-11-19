@@ -327,7 +327,7 @@ sequenceDiagram
 | アカウント列挙 | ログイン失敗時は未登録かパスワード違いかを区別せず「メールアドレスかパスワードが違います」と返す。登録画面の「すでに登録されています」からは登録済みのメールアドレスがわかるが、防ぐにはメールでの本人確認が要るため、課題の範囲外として対応しない。同じ理由で、ログインの応答時間の差（未登録のときは照合しないので速い）も直さない（ADR 0007） | Controller_Auth::post_login |
 | 他者リソースへのアクセス | 判定をModel_Board::can_access()にまとめ、すべての取得・更新でboards.owner_idとログイン中のuser_idを条件に入れる | 全Model |
 | Cookieの盗用 | config.phpのcookieでHttpOnlyとSameSite=Laxを有効にし、HTTPS環境ではSecureも付ける。FuelPHP 1.8のCookieクラスはSameSiteを渡せないため、classes/cookie.phpでCookie::set()を上書きし、bootstrap.phpでコアのCookieと差し替える。session.phpはfileドライバにして、CookieにはセッションIDだけを入れる（ADR 0003） | config/config.php、classes/cookie.php、bootstrap.php、config/session.php |
-| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、config.phpのlanguageをjaにし、lang/ja/validation.phpに日本語のメッセージを置く。画面ごとに文を変えるもの（「画面を再読み込みしてください」など）だけset_message()で書く。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線） | 各Controller |
+| 不正な入力 | Validationクラスで必須・文字数・メール形式（valid_email）を検証する。Validationの既定のメッセージは英語なので、config.phpのlanguageをjaにし、lang/ja/validation.phpに日本語のメッセージを置く。画面ごとに文を変えるもの（「画面を再読み込みしてください」など）だけset_message()で書く。パスワードの上限はmax_length（文字数で数える）ではなく、strlen()で72バイト以内かを確かめる独自のルールで判定する。status_idは数値を直書きせず、statusesテーブルに存在するIDかを確認し、なければ422を返す（DBの外部キー制約は最後の防衛線）。文字列や数値を期待する項目に配列などが送られると、型の変換でNoticeになり500になるので、Validationの前に入力エラーにする。フォームは各項目の最初のルールで文字列かを確かめ、APIはController_Api_Baseで、本文がJSONのオブジェクトであることと、値が文字列・数値・nullのどれかであることを確かめて422を返す。本文がオブジェクトでないとInput::json()の中でWarningになるため、classes/input.phpで本文をそのまま返すInput::raw()を足し、bootstrap.phpでコアのInputと差し替えて、Input::json()の前に確かめる | 各Controller、controller/api/base.php、classes/input.php、bootstrap.php |
 | 情報漏えい | 本番相当の環境ではエラー詳細を画面に出さず、DBの接続情報は環境変数（DB_HOST・DB_NAME・DB_USER・DB_PASSWORD）から読む。初めて暗号化（セッションなど）を使うとFuelPHPが鍵の入った config/crypt.php を自動で作るため、.gitignoreに入れてコミットしない | config/production/db.php、config/staging/db.php、.gitignore |
 
 ### テスト
@@ -368,9 +368,10 @@ kanban-todo/
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
 │   └── app/
-│       ├── bootstrap.php          # Cookieクラスの差し替え
+│       ├── bootstrap.php          # Cookie・Inputクラスの差し替え
 │       ├── classes/
 │       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
+│       │   ├── input.php          # Input::raw()の追加（APIでJSONの本文を確かめる）
 │       │   ├── guard.php          # ログイン・CSRFトークンの確認、ログイン中のユーザー
 │       │   ├── httpjsonexception.php # APIのエラーをJSONで返す例外（before()から処理を止める）
 │       │   ├── httpredirectexception.php # 画面を別のページへ転送する例外（before()から処理を止める）
