@@ -33,6 +33,8 @@ class Model_Card
 			->where('board_id', '=', $board_id)
 			->order_by('status_id')
 			->order_by('sort_order')
+			// sort_order が重なったときも、CardMover と同じ順（sort_order, id）に並べる
+			->order_by('id')
 			->execute()
 			->as_array();
 	}
