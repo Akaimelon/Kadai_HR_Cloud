@@ -76,7 +76,7 @@ class Controller_Auth extends Controller_Base
 
 		if ($user === null)
 		{
-			// 未登録かパスワード違いかを区別しない（登録済みのメールアドレスを知られないため）
+			// 未登録かパスワード違いかを区別しない。ただし登録済みかは登録画面で分かるので、隠しきれてはいない（ADR 0007）
 			return $this->show_form('auth/login', 'ログイン', array('メールアドレスかパスワードが違います'));
 		}
 
