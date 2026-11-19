@@ -68,9 +68,9 @@ class CardMover
 		// トランザクションが開いたまま残るため、両方の親の \Throwable で受ける
 		catch (\Throwable $e)
 		{
-			// false にすると、自分が始めた段だけを戻す。テストのように外側でトランザクションを始めていても、
-			// 外側まで巻き込んで戻さないため
-			\DB::rollback_transaction(false);
+			// 第2引数を false にすると、自分が始めた段だけを戻す。テストのように外側でトランザクションを始めていても、
+			// 外側まで巻き込んで戻さないため。第1引数は接続名なので、false を1つだけ渡すと接続が見つからず例外になる
+			\DB::rollback_transaction(null, false);
 			throw $e;
 		}
 	}

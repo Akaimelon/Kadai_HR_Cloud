@@ -113,10 +113,10 @@ class Model_Card
 
 			\DB::commit_transaction();
 		}
-		// \Throwable で受けることと rollback_transaction(false) の理由は、Kanban\CardMover::move() と同じ
+		// \Throwable で受けることと rollback_transaction(null, false) の理由は、Kanban\CardMover::move() と同じ
 		catch (\Throwable $e)
 		{
-			\DB::rollback_transaction(false);
+			\DB::rollback_transaction(null, false);
 			throw $e;
 		}
 

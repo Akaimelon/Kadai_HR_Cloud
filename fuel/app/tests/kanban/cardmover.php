@@ -131,6 +131,24 @@ class Test_Kanban_CardMover extends TestCase
 		$this->assertNotSame('2026-01-01 00:00:00', Model_Board::find_by_owner($this->user_id)[0]['updated_at']);
 	}
 
+	public function test_途中で失敗すると元の例外を投げて並び順を戻す()
+	{
+		list($a, $b, $c) = $this->create_cards(1, array('A', 'B', 'C'));
+
+		try
+		{
+			// statuses にない列は、振り直しの後の UPDATE で外部キー違反になる。
+			// 戻らないと、移動元の列の振り直しで C の sort_order が 1 になったまま残る
+			$this->move($b, 99, 0);
+			$this->fail('例外が投げられなかった');
+		}
+		catch (Database_Exception $e)
+		{
+		}
+
+		$this->assertColumn(1, array($a, $b, $c));
+	}
+
 	/**
 	 * @return int[]  作ったカードのID（列の上から順）
 	 */

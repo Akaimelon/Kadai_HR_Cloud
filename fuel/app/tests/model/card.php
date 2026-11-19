@@ -58,6 +58,14 @@ class Test_Model_Card extends TestCase
 		$this->assertSame(0, (int) Model_Card::find($other_column, $this->user_id)['sort_order']);
 	}
 
+	public function test_作成に失敗すると元の例外を投げる()
+	{
+		$this->expectException(Database_Exception::class);
+
+		// statuses にない列なので、INSERT が外部キー違反になる
+		Model_Card::create($this->board_id, $this->user_id, 99, '応募者', null);
+	}
+
 	public function test_他人のボードには作成できない()
 	{
 		$others_board = Model_Board::create($this->other_user_id, '他人のボード');
