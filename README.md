@@ -101,7 +101,7 @@ Dockerの基本的な概念については、以下のリンクを参考にし�
 
 ## ログについて
 - **アクセスログ**: Dockerのコンテナのログ
-- **FuelPHPのエラーログ**: /var/www/html/intern_kadai/fuel/app/logs/
+- **FuelPHPのエラーログ**: /var/www/html/my_fuel_project/fuel/app/logs/
   - 年月日ごとにログが管理されている
   - tail -f {見たいログファイル}でログを出力
 
