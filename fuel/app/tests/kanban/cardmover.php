@@ -102,6 +102,21 @@ class Test_Kanban_CardMover extends TestCase
 		$this->assertColumn(1, array($d, $a, $c));
 	}
 
+	public function test_ロックを待つ間に別の列へ動いていても実際に抜けた列を詰める()
+	{
+		list($a) = $this->create_cards(1, array('A'));
+		list($x, $y) = $this->create_cards(2, array('X', 'Y'));
+		// 同じカードの移動が2つ重なり、先の移動（1列目→2列目の先頭）が終わってから、
+		// 後の移動がロックを取った状況。後の移動には、先の移動の前に読んだカードが渡る
+		$stale = Model_Card::find($a, $this->user_id);
+		$this->move($a, 2, 0);
+
+		Kanban\CardMover::move($stale, 3, 0);
+
+		$this->assertColumn(2, array($x, $y));
+		$this->assertColumn(3, array($a));
+	}
+
 	public function test_動かしたカードとボードの更新日時だけが変わる()
 	{
 		list($a, $b) = $this->create_cards(1, array('A', 'B'));

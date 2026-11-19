@@ -14,7 +14,7 @@ class CardMover
 	 *
 	 * 移動元と移動先の列を、0からの連番に振り直す。削除でできた欠番もここで詰まる。
 	 *
-	 * @param  array $card        \Model_Card::find() で取得したカード。呼び出し元で、操作してよいカードか確かめておく
+	 * @param  array $card        \Model_Card::find() で取得したカード（id と board_id を使う）。呼び出し元で、操作してよいカードか確かめておく
 	 * @param  int   $status_id   移動先の列。呼び出し元で \Model_Status::exists() を確かめておく
 	 * @param  int   $sort_order  移動先の列での挿入位置（0始まり）。範囲外なら末尾に丸める
 	 * @return void
@@ -23,7 +23,6 @@ class CardMover
 	{
 		$card_id = (int) $card['id'];
 		$board_id = (int) $card['board_id'];
-		$from_status_id = (int) $card['status_id'];
 		$status_id = (int) $status_id;
 		$now = date('Y-m-d H:i:s');
 
@@ -32,6 +31,14 @@ class CardMover
 		{
 			// 同じボードで同時に移動されると、両方が古い並び順を読んで連番が崩れるため
 			\Model_Board::lock($board_id);
+
+			// $card['status_id'] はロックの前に読んだ値で、待つ間に同じカードが別の列へ動いていることがある。
+			// それを移動元にすると、実際に抜けた列が振り直されず欠番が残るため、ロックの後に読み直す
+			$from_status_id = (int) \DB::select('status_id')
+				->from('cards')
+				->where('id', '=', $card_id)
+				->execute()
+				->get('status_id');
 
 			$ids = static::column_card_ids($board_id, $status_id, $card_id);
 			// 別のタブで開いた画面からだと、枚数がずれて範囲外の位置が届くことがあるため
