@@ -95,8 +95,19 @@ class Controller_Auth extends Controller_Base
 	 */
 	protected function validation()
 	{
+		// email[]=a のように配列で送られると、trim や strlen() が Warning を出して500になる。
+		// ルールは前から順に動き、失敗したところで止まるので、最初に文字列かを確かめる。
+		// 送られていない（null）ときは required のエラーを出したいので、ここでは通す
+		$is_string = array('is_string' => function ($value) {
+			return $value === null or is_string($value);
+		});
+
+		// エラー文に :label などがあると、FuelPHP が値を implode() して埋め込もうとし、
+		// email[a][b]=1 のような入れ子の配列で Notice になる。そのため : のない文をフィールドごとに持たせる
 		$val = \Validation::forge();
 		$val->add('email', 'メールアドレス')
+			->set_error_message('is_string', 'メールアドレスを正しく入力してください')
+			->add_rule($is_string)
 			->add_rule('trim')
 			->add_rule('required')
 			->add_rule('valid_email')
@@ -104,6 +115,8 @@ class Controller_Auth extends Controller_Base
 		// bcrypt は72バイトより後ろを無視するため、それより長いパスワードは受け付けない。
 		// max_length は文字数で数え、全角1文字（3バイト）も1と数えるので使わない
 		$val->add('password', 'パスワード')
+			->set_error_message('is_string', 'パスワードを正しく入力してください')
+			->add_rule($is_string)
 			->add_rule('required')
 			->add_rule(array('max_bytes' => function ($password) {
 				return strlen($password) <= 72;
@@ -123,9 +136,12 @@ class Controller_Auth extends Controller_Base
 	 */
 	protected function show_form($view, $title, array $errors = array())
 	{
+		// 配列で送られたときは (string) が Notice になるので、入力欄を空にする
+		$email = \Input::post('email', '');
+
 		$this->template->title = $title;
 		$this->template->content = \View::forge($view, array(
-			'email'  => (string) \Input::post('email', ''),
+			'email'  => is_string($email) ? $email : '',
 			'errors' => array_values($errors),
 		));
 	}

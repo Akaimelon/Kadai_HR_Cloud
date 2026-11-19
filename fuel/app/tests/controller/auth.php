@@ -71,7 +71,7 @@ class Test_Controller_Auth extends TestCase
 		$user_id = Model_User::create('taro@example.com', 'correct-password');
 		$this->assertNotNull($user_id, 'テスト用のユーザーを作れなかった（同じメールアドレスが残っている？）');
 
-		$response = $this->post_register('taro@example.com', 'correct-password');
+		$response = $this->post_form('register', 'taro@example.com', 'correct-password');
 
 		$this->assertSame(302, $response->status);
 		$this->assertStringEndsWith('boards', $response->get_header('Location'));
@@ -82,7 +82,7 @@ class Test_Controller_Auth extends TestCase
 	{
 		Model_User::create('taro@example.com', 'correct-password');
 
-		$response = $this->post_register('taro@example.com', 'other-password');
+		$response = $this->post_form('register', 'taro@example.com', 'other-password');
 
 		$this->assertSame(200, $response->status);
 		$this->assertSame(
@@ -90,6 +90,35 @@ class Test_Controller_Auth extends TestCase
 			$response->body()->get('content')->get('errors')
 		);
 		$this->assertNull(Guard::user_id());
+	}
+
+	/**
+	 * 画面のフォームからは送れないが、name="email[]" のように手で送ると値が配列で届く
+	 *
+	 * @dataProvider provide_array_inputs
+	 */
+	public function test_配列が送られたら500にせず入力エラーを出す($action, $email, $password, $email_in_form)
+	{
+		$response = $this->post_form($action, $email, $password);
+
+		$this->assertSame(200, $response->status);
+		$this->assertNotEmpty($response->body()->get('content')->get('errors'));
+		$this->assertSame($email_in_form, $response->body()->get('content')->get('email'));
+		$this->assertNull(Guard::user_id());
+	}
+
+	/**
+	 * 入れ子の配列は、エラー文を作るところ（FuelPHP の Validation_Error）でも Notice になったので別に確かめる
+	 */
+	public function provide_array_inputs()
+	{
+		return array(
+			'登録・メールアドレス'     => array('register', array('a'), 'correct-password', ''),
+			'登録・入れ子の配列'       => array('register', array('a' => array('b' => '1')), array('x'), ''),
+			'登録・パスワード'         => array('register', 'taro@example.com', array('x'), 'taro@example.com'),
+			'ログイン・メールアドレス' => array('login', array('a'), 'correct-password', ''),
+			'ログイン・パスワード'     => array('login', 'taro@example.com', array('x'), 'taro@example.com'),
+		);
 	}
 
 	public function test_転送の例外は302とLocationヘッダーを返す()
@@ -102,13 +131,14 @@ class Test_Controller_Auth extends TestCase
 	}
 
 	/**
-	 * 登録フォームの送信を、CSRFトークン付きのPOSTで再現する
+	 * 登録・ログインのフォームの送信を、CSRFトークン付きのPOSTで再現する
 	 *
-	 * @param  string $email
-	 * @param  string $password
+	 * @param  string       $action   register か login
+	 * @param  string|array $email
+	 * @param  string|array $password
 	 * @return Response
 	 */
-	protected function post_register($email, $password)
+	protected function post_form($action, $email, $password)
 	{
 		$_POST = array(
 			'email'    => $email,
@@ -118,7 +148,7 @@ class Test_Controller_Auth extends TestCase
 
 		try
 		{
-			return Request::forge('auth/register', true, 'POST')->execute()->response();
+			return Request::forge('auth/'.$action, true, 'POST')->execute()->response();
 		}
 		finally
 		{
