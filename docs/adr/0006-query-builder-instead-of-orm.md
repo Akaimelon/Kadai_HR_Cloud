@@ -6,7 +6,7 @@ FuelPHP 1.8 の ORM パッケージ（`Orm\Model`）と比べたうえで、使�
 
 - **課題条件 No.7**：「データベースとのやり取りはDBクラスを使うこと」。ORM は別のパッケージ（`fuel/packages/orm`）で、中で DBクラスを使うものの、アプリのコードからは DBクラスを使っていることが見えない。クエリビルダなら、条件を満たしていることをコードでそのまま示せる
 - **集計が多い**：ボード一覧の「カードの件数」（LEFT JOIN と COUNT）、選考ステージ別の人数（GROUP BY）、カードを追加するときの並び順（`COALESCE(MAX(sort_order), -1) + 1`）は、ORM で書いても `DB::expr()` やクエリビルダを混ぜることになる
-- **カードの移動でロックが要る**：同じボードの移動を順番に処理するため、ボードの行を `SELECT ... FOR UPDATE` でロックし、並び順の振り直しとカードの更新を1つのトランザクションで行う（`Kanban\CardMover`）。FuelPHP 1.8 は ORM にもクエリビルダにも FOR UPDATE を付ける方法がない（`fuel/core/classes/database/` と `fuel/packages/orm/` を grep して確認）。この1か所だけ `DB::query()` で SQL を書き、値は `param()` でバインドする
+- **カードの作成と移動でロックが要る**：同じボードの作成・移動を順番に処理するため、ボードの行を `SELECT ... FOR UPDATE` でロックし、並び順を読んでから書くまでを1つのトランザクションで行う（`Model_Card::create()`・`Kanban\CardMover`）。FuelPHP 1.8 は ORM にもクエリビルダにも FOR UPDATE を付ける方法がない（`fuel/core/classes/database/` と `fuel/packages/orm/` を grep して確認）。ロックは `Model_Board::lock()` にまとめ、この1か所だけ `DB::query()` で SQL を書き、値は `param()` でバインドする
 - **権限の確認を1か所に集める**：Model のメソッドはどれもユーザーIDを受け取り、`Model_Board::can_access()` で確かめてから読み書きする（設計書4章）。ORM の `find()` はIDだけで誰のボードでも取り出せるので、取り出し方が増えるほど確認漏れが起きやすい
 
 ## Considered Options

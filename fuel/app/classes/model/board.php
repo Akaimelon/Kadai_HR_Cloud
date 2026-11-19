@@ -161,6 +161,24 @@ class Model_Board
 	}
 
 	/**
+	 * ボードの行をロックし、同じボードでカードの並び順を変える処理を1つずつ順番に処理させる
+	 *
+	 * 並び順を読んでから書くまでの間に同じボードの別のリクエストが割り込むと、sort_order が重なったり
+	 * 連番が崩れたりするため（カードの作成と移動）。ロックはトランザクションが終わるまで続くので、
+	 * 呼び出し元のトランザクションの中で、並び順を読む前に呼ぶ。
+	 * クエリビルダには FOR UPDATE を付ける方法がないため、ここだけ DB::query() で書く（値は param() でバインドする。ADR 0006）
+	 *
+	 * @param  int $board_id
+	 * @return void
+	 */
+	public static function lock($board_id)
+	{
+		\DB::query('SELECT id FROM boards WHERE id = :id FOR UPDATE')
+			->param('id', $board_id)
+			->execute();
+	}
+
+	/**
 	 * ボードの更新日時を今にする
 	 *
 	 * カードを操作したボードを一覧の上に出すため（設計書4章）。

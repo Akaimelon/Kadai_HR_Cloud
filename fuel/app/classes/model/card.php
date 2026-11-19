@@ -79,28 +79,44 @@ class Model_Card
 			return null;
 		}
 
-		// 空の列では MAX が NULL になるので、-1 に置き換えて 0 から始める
-		$next = \DB::select(\DB::expr('COALESCE(MAX(sort_order), -1) + 1 AS next'))
-			->from('cards')
-			->where('board_id', '=', $board_id)
-			->where('status_id', '=', $status_id)
-			->execute()
-			->get('next');
-
 		$now = date('Y-m-d H:i:s');
-		list($id) = \DB::insert('cards')
-			->set(array(
-				'board_id'   => $board_id,
-				'status_id'  => $status_id,
-				'title'      => $title,
-				'memo'       => $memo,
-				'sort_order' => $next,
-				'created_at' => $now,
-				'updated_at' => $now,
-			))
-			->execute();
 
-		Model_Board::touch($board_id);
+		\DB::start_transaction();
+		try
+		{
+			// 同じ列に同時に作成されると、両方が同じ MAX を読んで sort_order が重なるため
+			Model_Board::lock($board_id);
+
+			// 空の列では MAX が NULL になるので、-1 に置き換えて 0 から始める
+			$next = \DB::select(\DB::expr('COALESCE(MAX(sort_order), -1) + 1 AS next'))
+				->from('cards')
+				->where('board_id', '=', $board_id)
+				->where('status_id', '=', $status_id)
+				->execute()
+				->get('next');
+
+			list($id) = \DB::insert('cards')
+				->set(array(
+					'board_id'   => $board_id,
+					'status_id'  => $status_id,
+					'title'      => $title,
+					'memo'       => $memo,
+					'sort_order' => $next,
+					'created_at' => $now,
+					'updated_at' => $now,
+				))
+				->execute();
+
+			Model_Board::touch($board_id);
+
+			\DB::commit_transaction();
+		}
+		// \Throwable で受けることと rollback_transaction(false) の理由は、Kanban\CardMover::move() と同じ
+		catch (\Throwable $e)
+		{
+			\DB::rollback_transaction(false);
+			throw $e;
+		}
 
 		return (int) $id;
 	}
