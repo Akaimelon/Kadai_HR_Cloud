@@ -39,11 +39,13 @@ class Controller_Api_Cards extends Controller_Api_Base
 		}
 
 		$id = Model_Card::create($board_id, Guard::user_id(), $status_id, $val->validated('title'), $this->validated_memo($val));
+		if ($id === null)
+		{
+			throw $this->board_not_found();
+		}
 
 		// 画面に更新日時を出すため、DBに入った updated_at ごと返す
-		return $this->response(array(
-			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
-		), 201);
+		return $this->response(array('card' => $this->found_card_json($id)), 201);
 	}
 
 	/**
@@ -61,9 +63,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 
 		Model_Card::update($id, Guard::user_id(), $val->validated('title'), $this->validated_memo($val));
 
-		return $this->response(array(
-			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
-		));
+		return $this->response(array('card' => $this->found_card_json($id)));
 	}
 
 	/**
@@ -95,11 +95,13 @@ class Controller_Api_Cards extends Controller_Api_Base
 			throw new HttpJsonException(422, '選考ステージが正しくありません。画面を再読み込みしてください');
 		}
 
-		\Kanban\CardMover::move(Model_Card::find($id, Guard::user_id()), $status_id, (int) $val->validated('sort_order'));
+		$card = Model_Card::find($id, Guard::user_id());
+		if ( ! $card or ! \Kanban\CardMover::move($card, $status_id, (int) $val->validated('sort_order')))
+		{
+			throw $this->card_not_found();
+		}
 
-		return $this->response(array(
-			'card' => $this->to_json(Model_Card::find($id, Guard::user_id())),
-		));
+		return $this->response(array('card' => $this->found_card_json($id)));
 	}
 
 	/**
@@ -153,8 +155,36 @@ class Controller_Api_Cards extends Controller_Api_Base
 	{
 		if ( ! Model_Card::find($id, Guard::user_id()))
 		{
-			throw new HttpJsonException(404, 'カードが見つかりません。画面を再読み込みしてください');
+			throw $this->card_not_found();
 		}
+	}
+
+	/**
+	 * 確かめた後、操作の途中で別のタブから削除された場合も、確かめたときと同じ404にするため1か所にまとめる
+	 *
+	 * @return HttpJsonException
+	 */
+	protected function card_not_found()
+	{
+		return new HttpJsonException(404, 'カードが見つかりません。画面を再読み込みしてください');
+	}
+
+	/**
+	 * 操作の後に読み直したカードを返す。操作の直後に別のタブで削除されていたら404
+	 *
+	 * @param  int $id
+	 * @return array
+	 * @throws HttpJsonException
+	 */
+	protected function found_card_json($id)
+	{
+		$card = Model_Card::find($id, Guard::user_id());
+		if ( ! $card)
+		{
+			throw $this->card_not_found();
+		}
+
+		return $this->to_json($card);
 	}
 
 	/**

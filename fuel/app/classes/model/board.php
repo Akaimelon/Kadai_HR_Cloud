@@ -168,14 +168,18 @@ class Model_Board
 	 * 呼び出し元のトランザクションの中で、並び順を読む前に呼ぶ。
 	 * クエリビルダには FOR UPDATE を付ける方法がないため、ここだけ DB::query() で書く（値は param() でバインドする。ADR 0006）
 	 *
+	 * 呼び出し元が can_access() を確かめた後、ロックを待つ間に別のタブでボードが削除されていることがあるため、
+	 * ボードがまだあるかを返す
+	 *
 	 * @param  int $board_id
-	 * @return void
+	 * @return bool  ボードがまだあれば true
 	 */
 	public static function lock($board_id)
 	{
-		\DB::query('SELECT id FROM boards WHERE id = :id FOR UPDATE')
+		return (bool) \DB::query('SELECT id FROM boards WHERE id = :id FOR UPDATE')
 			->param('id', $board_id)
-			->execute();
+			->execute()
+			->current();
 	}
 
 	/**

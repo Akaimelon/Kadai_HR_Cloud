@@ -37,6 +37,10 @@ class Controller_Api_Boards extends Controller_Api_Base
 		$title = $this->validated_title();
 		Model_Board::rename($id, Guard::user_id(), $title);
 		$board = Model_Board::find($id, Guard::user_id());
+		if ( ! $board)
+		{
+			throw $this->board_not_found();
+		}
 
 		return $this->response(array(
 			'board' => array('id' => (int) $board['id'], 'title' => $board['title'], 'updated_at' => $board['updated_at']),

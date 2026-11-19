@@ -17,7 +17,7 @@ class CardMover
 	 * @param  array $card        \Model_Card::find() で取得したカード（id と board_id を使う）。呼び出し元で、操作してよいカードか確かめておく
 	 * @param  int   $status_id   移動先の列。呼び出し元で \Model_Status::exists() を確かめておく
 	 * @param  int   $sort_order  移動先の列での挿入位置（0始まり）。範囲外なら末尾に丸める
-	 * @return void
+	 * @return bool  ロックを待つ間にカード（またはボードごと）削除されていて、移動しなかったら false
 	 */
 	public static function move(array $card, $status_id, $sort_order)
 	{
@@ -34,11 +34,19 @@ class CardMover
 
 			// $card['status_id'] はロックの前に読んだ値で、待つ間に同じカードが別の列へ動いていることがある。
 			// それを移動元にすると、実際に抜けた列が振り直されず欠番が残るため、ロックの後に読み直す
-			$from_status_id = (int) \DB::select('status_id')
+			$from_status_id = \DB::select('status_id')
 				->from('cards')
 				->where('id', '=', $card_id)
 				->execute()
 				->get('status_id');
+
+			// 待つ間に削除されていると、消えたカードを入れて移動先の列を振り直し、欠番ができるため
+			if ($from_status_id === null)
+			{
+				\DB::rollback_transaction(null, false);
+				return false;
+			}
+			$from_status_id = (int) $from_status_id;
 
 			$ids = static::column_card_ids($board_id, $status_id, $card_id);
 			// 別のタブで開いた画面からだと、枚数がずれて範囲外の位置が届くことがあるため
@@ -63,6 +71,7 @@ class CardMover
 			\Model_Board::touch($board_id);
 
 			\DB::commit_transaction();
+			return true;
 		}
 		// \Exception だけだと、PHP 7 の \Error（TypeError など）が起きたときにロールバックされず、
 		// トランザクションが開いたまま残るため、両方の親の \Throwable で受ける

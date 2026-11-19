@@ -67,7 +67,17 @@ abstract class Controller_Api_Base extends Controller_Rest
 	{
 		if ( ! Model_Board::can_access($board_id, Guard::user_id()))
 		{
-			throw new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
+			throw $this->board_not_found();
 		}
+	}
+
+	/**
+	 * 確かめた後、操作の途中で別のタブから削除された場合も、確かめたときと同じ404にするため1か所にまとめる
+	 *
+	 * @return HttpJsonException
+	 */
+	protected function board_not_found()
+	{
+		return new HttpJsonException(404, 'ボードが見つかりません。画面を再読み込みしてください');
 	}
 }

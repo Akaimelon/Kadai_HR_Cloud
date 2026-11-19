@@ -117,6 +117,19 @@ class Test_Kanban_CardMover extends TestCase
 		$this->assertColumn(3, array($a));
 	}
 
+	public function test_ロックを待つ間にカードが削除されていたら何も変えずfalse()
+	{
+		list($a, $b) = $this->create_cards(1, array('A', 'B'));
+		list($x) = $this->create_cards(2, array('X'));
+		$stale = Model_Card::find($a, $this->user_id);
+		Model_Card::delete($a, $this->user_id);
+
+		$this->assertFalse(Kanban\CardMover::move($stale, 2, 0));
+
+		// 消えたカードを入れて振り直すと、X が 1 になって欠番ができる
+		$this->assertColumn(2, array($x));
+	}
+
 	public function test_動かしたカードとボードの更新日時だけが変わる()
 	{
 		list($a, $b) = $this->create_cards(1, array('A', 'B'));

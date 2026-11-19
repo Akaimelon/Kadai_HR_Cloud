@@ -173,6 +173,21 @@ class Test_Model_Board extends TestCase
 		$this->assertCount(1, Model_Board::find_by_owner($this->other_user_id));
 	}
 
+	public function test_ロックはボードがあればtrue()
+	{
+		$id = Model_Board::create($this->user_id, 'エンジニア採用');
+
+		$this->assertTrue(Model_Board::lock($id));
+	}
+
+	public function test_ロックはボードが消えていればfalse()
+	{
+		$id = Model_Board::create($this->user_id, 'エンジニア採用');
+		Model_Board::delete($id, $this->user_id);
+
+		$this->assertFalse(Model_Board::lock($id));
+	}
+
 	/**
 	 * 並び順を確かめるため、更新日時を直接書き換える（create() は現在時刻を入れるので差が出ない）
 	 */

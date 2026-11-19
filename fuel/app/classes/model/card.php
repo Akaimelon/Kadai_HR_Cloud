@@ -72,7 +72,7 @@ class Model_Card
 	 * @param  int         $status_id  呼び出し元で Model_Status::exists() を確かめておく
 	 * @param  string      $title
 	 * @param  string|null $memo
-	 * @return int|null  作成したカードのID。操作できないボードなら null
+	 * @return int|null  作成したカードのID。操作できないボード、またはロックを待つ間に削除されたボードなら null
 	 */
 	public static function create($board_id, $user_id, $status_id, $title, $memo)
 	{
@@ -87,7 +87,12 @@ class Model_Card
 		try
 		{
 			// 同じ列に同時に作成されると、両方が同じ MAX を読んで sort_order が重なるため
-			Model_Board::lock($board_id);
+			if ( ! Model_Board::lock($board_id))
+			{
+				// そのまま INSERT すると外部キー違反で500になるため
+				\DB::rollback_transaction(null, false);
+				return null;
+			}
 
 			// 空の列では MAX が NULL になるので、-1 に置き換えて 0 から始める
 			$next = \DB::select(\DB::expr('COALESCE(MAX(sort_order), -1) + 1 AS next'))
