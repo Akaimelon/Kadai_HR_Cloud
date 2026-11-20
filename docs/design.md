@@ -421,7 +421,7 @@ kanban-todo/
 │           ├── auth/
 │           └── boards/
 ├── public/
-│   ├── .htaccess                  # index.php への書き換え、セキュリティヘッダー（X-Frame-Options・nosniff）
+│   ├── .htaccess                  # index.php への書き換え、セキュリティヘッダー（CSPのframe-ancestors・X-Frame-Options・nosniff）
 │   ├── index.php
 │   └── assets/
 │       ├── js/ui.js               # APIの呼び出しと保存・ダイアログの開閉・確認ダイアログ・トースト・日時の表示（2画面で共通）
