@@ -87,7 +87,7 @@ No.5、6、8は「説明できること」が条件に含まれるため、レ�
 | モーダル・確認ダイアログ | HTML標準の`<dialog>`とshowModal() | Escで閉じる、後ろの画面を操作させない、後ろを暗くする、をブラウザに任せられる。削除の確認にwindow.confirmを使わないのは、見た目を画面に揃えるためと、ブラウザの自動操作による確認が本物のダイアログで止まるため |
 | ドラッグ&ドロップ | HTML5 Drag and Drop API | 追加ライブラリなしでknockoutのeventバインディングから扱える |
 | 非同期通信 | fetch API（JSON） | ブラウザ標準で、jQueryを入れずに済む |
-| 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる |
+| 開発環境 | Docker Compose（PHP / MySQL） | レビュアーが同じ環境を再現できる。Webサーバーはコンテナの Apache だけを対象にし、FuelPHP に入っていた IIS 用の public/web.config は消した（セキュリティヘッダーを .htaccess で付けており、IIS では付かないまま動いてしまうため） |
 | テスト | PHPUnit 5.7（oil test） | FuelPHPに組み込みのテストランナーで動く。FuelPHP 1.8のTestCaseはPHPUnit_Framework_TestCaseを継承しており、そのクラスがない6系以降では動かないため5.7にする。appコンテナのイメージにpharで入れる |
 | ソース管理 | GitHub | 課題条件。CI（GitHub Actions）は課題条件に含まれず、1人開発で手元のテストが動くため作らない（7章） |
 
