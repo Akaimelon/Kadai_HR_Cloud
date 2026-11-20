@@ -85,9 +85,27 @@ class Model_User
 			// 1062 は users のどの UNIQUE 制約の違反でも出るので、メールアドレスが本当に登録済みかを確かめる。
 			// エラー文の制約名では見分けない（MySQL 8.0 では 'users.users_email_unique' のように形が変わり、
 			// 入力されたメールアドレスも文に入るため）
-			if (static::is_duplicate_entry($e) and static::exists($email))
+			if (static::is_duplicate_entry($e))
 			{
-				return null;
+				// 確認の失敗をそのまま投げると、INSERT が拒否された元の原因の $e がログに残らないため、
+				// 確認の例外はログに残すだけにして $e を投げ直す（Model_Card::create() のロールバックと同じ）
+				try
+				{
+					$registered = static::exists($email);
+				}
+				catch (\Throwable $exists_error)
+				{
+					\Log::error('メールアドレスが登録済みかの確認に失敗した: '.$exists_error);
+					throw $e;
+				}
+
+				if ($registered)
+				{
+					// $e のメッセージは入力されたメールアドレスを含むので、ログには出さない。
+					// info にしないのは、既定の log_threshold（L_WARNING）では書かれないため
+					\Log::warning('同じメールアドレスの登録が重なったため、登録済みとして扱った');
+					return null;
+				}
 			}
 
 			throw $e;
