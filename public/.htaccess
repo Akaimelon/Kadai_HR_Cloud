@@ -75,5 +75,8 @@
 # PHPのafter()ではなくここで付けるのは、例外で返す403・404や、JS・CSSなどの静的ファイルにも付けるため。
 # always は、2xx以外の応答（エラー画面やリダイレクト）にも付けるため。
 # <IfModule mod_headers.c> で囲まないのは、モジュールがない環境で黙って外れるより、500で気づけるほうがよいため
+# CSPをframe-ancestorsだけにするのは、script-srcを入れるとknockoutのnew Functionのために'unsafe-eval'を許すことになり、守りにならないため。
+# X-Frame-Optionsも残すのは、frame-ancestorsに対応していない古いブラウザのため
+Header always set Content-Security-Policy "frame-ancestors 'none'"
 Header always set X-Frame-Options "DENY"
 Header always set X-Content-Type-Options "nosniff"
