@@ -29,7 +29,13 @@ class CardMover
 		try
 		{
 			// 同じボードで同時に移動されると、両方が古い並び順を読んで連番が崩れるため
-			\Model_Board::lock($board_id);
+			if ( ! \Model_Board::lock($board_id))
+			{
+				// 今はボードを消すとカードも CASCADE で消え、下のカードの確認でも false になる。
+				// それに頼らず、ボードが消えたことをここで扱うため（Model_Card::create() と同じ）
+				\DB::rollback_transaction(null, false);
+				return false;
+			}
 
 			// $card['status_id'] はロックの前に読んだ値で、待つ間に同じカードが別の列へ動いていることがある。
 			// それを移動元にすると、実際に抜けた列が振り直されず欠番が残るため、ロックの後に読み直す
