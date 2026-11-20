@@ -71,7 +71,7 @@ class Model_User
 		$row = array(
 			'email'         => static::normalize_email($email),
 			'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-			'created_at'    => date('Y-m-d H:i:s'),
+			'created_at'    => \DB::expr('NOW()'),
 		);
 
 		// catch で受け止めたいのは INSERT の重複だけなので、try は INSERT だけを囲み、

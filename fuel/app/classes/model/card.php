@@ -81,8 +81,6 @@ class Model_Card
 			return null;
 		}
 
-		$now = date('Y-m-d H:i:s');
-
 		\DB::start_transaction();
 		try
 		{
@@ -109,8 +107,8 @@ class Model_Card
 					'title'      => $title,
 					'memo'       => $memo,
 					'sort_order' => $next,
-					'created_at' => $now,
-					'updated_at' => $now,
+					'created_at' => \DB::expr('NOW()'),
+					'updated_at' => \DB::expr('NOW()'),
 				))
 				->execute();
 
@@ -151,7 +149,7 @@ class Model_Card
 			->set(array(
 				'title'      => $title,
 				'memo'       => $memo,
-				'updated_at' => date('Y-m-d H:i:s'),
+				'updated_at' => \DB::expr('NOW()'),
 			))
 			->where('id', '=', $card_id)
 			->execute();

@@ -24,7 +24,6 @@ class CardMover
 		$card_id = (int) $card['id'];
 		$board_id = (int) $card['board_id'];
 		$status_id = (int) $status_id;
-		$now = date('Y-m-d H:i:s');
 
 		\DB::start_transaction();
 		try
@@ -64,7 +63,7 @@ class CardMover
 			\DB::update('cards')
 				->set(array(
 					'status_id'  => $status_id,
-					'updated_at' => $now,
+					'updated_at' => \DB::expr('NOW()'),
 				))
 				->where('id', '=', $card_id)
 				->execute();

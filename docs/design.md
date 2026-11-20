@@ -193,6 +193,8 @@ statusesは選考ステージのマスタで、画面から追加・削除はし
 
 cardsには (board_id, status_id, sort_order) の複合インデックスを張り、列ごとの並び順取得を速くする。board_idの外部キーはこの複合インデックスの先頭列で兼ねる。status_idは先頭列ではないため、外部キー用のインデックスをMySQLが自動で作る。
 
+created_at・updated_at は、PHPの date() ではなく、書き込むSQLの中で MySQL の NOW() で決める。カードの作成・移動はボードのロックを待つことがあり、待つ前にPHPで決めると、先に済んだ操作より古い日時が入るため。MySQLのタイムゾーンはサーバーの設定に任せず、接続ごとに db.php の time_zone（'+09:00'）で日本時間にする（FuelPHP 1.8 のDB設定にはこの項目がないので、MySQLiの接続クラスを差し替えて接続直後に SET time_zone を実行する）。
+
 ## 5. エンドポイント一覧
 
 画面はHTMLを返すController_Baseの子クラス、ボードとカードの変更はJSONを返すController_Api_Base（Controller_Restを継承）の子クラスで分ける。画面用コントローラは表示だけを行い、データの変更はすべてAPIで行う。URLとアクションの対応はconfig/routes.phpで定義し、ログイン系以外はすべてbefore()でログイン確認を通す。
@@ -372,13 +374,14 @@ kanban-todo/
 ├── tailwind/input.css             # Tailwindの入力。探索対象にviews・js・kanban.phpを指定
 ├── fuel/
 │   └── app/
-│       ├── bootstrap.php          # Cookie・Inputクラスの差し替え
+│       ├── bootstrap.php          # Cookie・Input・MySQLi接続クラスの差し替え
 │       ├── classes/
 │       │   ├── cookie.php         # Cookie::set()の上書き（SameSite）
 │       │   ├── input.php          # Input::raw()の追加（APIでJSONの本文を確かめる）
 │       │   ├── guard.php          # ログイン・CSRFトークンの確認、ログイン中のユーザー
 │       │   ├── httpjsonexception.php # APIのエラーをJSONで返す例外（before()から処理を止める）
 │       │   ├── httpredirectexception.php # 画面を別のページへ転送する例外（before()から処理を止める）
+│       │   ├── database/mysqli/connection.php # 接続直後に SET time_zone（MySQLを日本時間にする）
 │       │   ├── controller/
 │       │   │   ├── base.php       # 画面用の基底。before()でログイン・CSRF確認
 │       │   │   ├── auth.php       # 登録・ログイン・ログアウト
@@ -397,7 +400,7 @@ kanban-todo/
 │       │       └── cardmover.php  # namespace Kanban。並び替え処理
 │       ├── config/
 │       │   ├── config.php         # Cookie属性・CSRFトークンの有効期限・言語（ja）
-│       │   ├── db.php             # 文字コード（utf8mb4）。接続先は環境ごとのフォルダ
+│       │   ├── db.php             # 文字コード（utf8mb4）・タイムゾーン（+09:00）。接続先は環境ごとのフォルダ
 │       │   ├── development/db.php # Docker の db コンテナ
 │       │   ├── production/db.php  # 環境変数から読む（staging/ も同じ）
 │       │   ├── session.php

@@ -81,7 +81,7 @@ class Model_Board
 			->set(array(
 				'owner_id'   => $owner_id,
 				'title'      => $title,
-				'updated_at' => date('Y-m-d H:i:s'),
+				'updated_at' => \DB::expr('NOW()'),
 			))
 			->execute();
 
@@ -154,7 +154,7 @@ class Model_Board
 		\DB::update('boards')
 			->set(array(
 				'title'      => $title,
-				'updated_at' => date('Y-m-d H:i:s'),
+				'updated_at' => \DB::expr('NOW()'),
 			))
 			->where('id', '=', $board_id)
 			->execute();
@@ -196,7 +196,7 @@ class Model_Board
 	public static function touch($board_id)
 	{
 		\DB::update('boards')
-			->value('updated_at', date('Y-m-d H:i:s'))
+			->value('updated_at', \DB::expr('NOW()'))
 			->where('id', '=', $board_id)
 			->execute();
 	}
