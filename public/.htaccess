@@ -73,7 +73,7 @@
 </IfModule>
 
 # PHPのafter()ではなくここで付けるのは、例外で返す403・404や、JS・CSSなどの静的ファイルにも付けるため。
-# always は、2xx以外の応答（エラー画面やリダイレクト）にも付けるため。
+# always は、Apacheが自分で返すエラー応答（-Indexesの403など）にも付けるため。PHPが返す404・302には、alwaysがなくても付く。
 # <IfModule mod_headers.c> で囲まないのは、モジュールがない環境で黙って外れるより、500で気づけるほうがよいため。
 # mod_headers は docker/Dockerfile の a2enmod で有効にしている。消すと全ページが500になる
 # CSPをframe-ancestorsだけにするのは、script-srcを入れるとknockoutのnew Functionのために'unsafe-eval'を許すことになり、守りにならないため。
