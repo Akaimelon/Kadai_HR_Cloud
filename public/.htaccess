@@ -71,3 +71,9 @@
 	</IfModule>
 
 </IfModule>
+
+# PHPのafter()ではなくここで付けるのは、例外で返す403・404や、JS・CSSなどの静的ファイルにも付けるため。
+# always は、2xx以外の応答（エラー画面やリダイレクト）にも付けるため。
+# <IfModule mod_headers.c> で囲まないのは、モジュールがない環境で黙って外れるより、500で気づけるほうがよいため
+Header always set X-Frame-Options "DENY"
+Header always set X-Content-Type-Options "nosniff"
