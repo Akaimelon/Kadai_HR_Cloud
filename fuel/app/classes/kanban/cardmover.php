@@ -85,7 +85,16 @@ class CardMover
 		{
 			// 第2引数を false にすると、自分が始めた段だけを戻す。テストのように外側でトランザクションを始めていても、
 			// 外側まで巻き込んで戻さないため。第1引数は接続名なので、false を1つだけ渡すと接続が見つからず例外になる
-			\DB::rollback_transaction(null, false);
+			try
+			{
+				\DB::rollback_transaction(null, false);
+			}
+			// 接続が切れているときなどはロールバックも例外を出す。それを投げると元の $e（失敗の原因）が消えるため、
+			// ログに残すだけにして $e を投げ直す。$e は投げ直せばエラーハンドラーがログに書くので、ここでは書かない
+			catch (\Throwable $rollback_error)
+			{
+				\Log::error('ロールバックに失敗した: '.$rollback_error);
+			}
 			throw $e;
 		}
 	}

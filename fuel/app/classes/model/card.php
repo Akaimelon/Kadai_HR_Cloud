@@ -116,10 +116,18 @@ class Model_Card
 
 			\DB::commit_transaction();
 		}
-		// \Throwable で受けることと rollback_transaction(null, false) の理由は、Kanban\CardMover::move() と同じ
+		// \Throwable で受けること、rollback_transaction(null, false) と、その失敗を内側の try で受ける理由は、
+		// Kanban\CardMover::move() と同じ
 		catch (\Throwable $e)
 		{
-			\DB::rollback_transaction(null, false);
+			try
+			{
+				\DB::rollback_transaction(null, false);
+			}
+			catch (\Throwable $rollback_error)
+			{
+				\Log::error('ロールバックに失敗した: '.$rollback_error);
+			}
 			throw $e;
 		}
 

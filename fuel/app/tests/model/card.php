@@ -35,6 +35,57 @@ class Test_Model_Card extends TestCase
 		parent::tearDown();
 	}
 
+	/**
+	 * ロールバックだけが例外を出す接続に差し替えて $fn を実行し、投げられた例外を返す
+	 *
+	 * 接続が切れたときのようにロールバックが失敗する状態は、本物の DB では1つの接続の中で作れないため。
+	 * Kanban\CardMover のテストにも同じものがある（テストのファイルどうしでクラスを共有できないため）
+	 */
+	protected function catch_with_failing_rollback(callable $fn)
+	{
+		$name = Config::get('db.active');
+		$real = Database_Connection::$instances[$name];
+		$fake = new class($real) extends Database_MySQLi_Connection {
+			public function __construct(Database_MySQLi_Connection $real)
+			{
+				// 同じ PDO とトランザクションの深さを引き継ぎ、ロールバック以外は本物と同じに動かす
+				foreach (get_object_vars($real) as $key => $value)
+				{
+					$this->$key = $value;
+				}
+			}
+
+			public function rollback_transaction($rollback_all = true)
+			{
+				throw new RuntimeException('ロールバックに失敗した（テスト用）');
+			}
+
+			public function forget_connection()
+			{
+				// 破棄されるときの disconnect() が、本物と共有している接続を close() しないため
+				$this->_connection = null;
+			}
+		};
+		Database_Connection::$instances[$name] = $fake;
+
+		try
+		{
+			$fn();
+		}
+		catch (Throwable $e)
+		{
+			return $e;
+		}
+		finally
+		{
+			// tearDown のロールバックは本物の接続で行い、外側のトランザクションごとテストのデータを戻す
+			$fake->forget_connection();
+			Database_Connection::$instances[$name] = $real;
+		}
+
+		$this->fail('例外が投げられなかった');
+	}
+
 	public function test_作成したカードを取得できる()
 	{
 		$id = Model_Card::create($this->board_id, $this->user_id, 2, '山田太郎', '経験3年');
@@ -64,6 +115,16 @@ class Test_Model_Card extends TestCase
 
 		// statuses にない列なので、INSERT が外部キー違反になる
 		Model_Card::create($this->board_id, $this->user_id, 99, '応募者', null);
+	}
+
+	public function test_ロールバックも失敗したら元の例外を投げる()
+	{
+		$e = $this->catch_with_failing_rollback(function () {
+			Model_Card::create($this->board_id, $this->user_id, 99, '応募者', null);
+		});
+
+		// ロールバックの例外に置き換わると、外部キー違反という元の原因がログに残らない
+		$this->assertInstanceOf(Database_Exception::class, $e);
 	}
 
 	public function test_他人のボードには作成できない()
