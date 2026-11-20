@@ -153,16 +153,16 @@ class Model_Card
 			return;
 		}
 
-		\DB::update('cards')
-			->set(array(
-				'title'      => $title,
-				'memo'       => $memo,
-				'updated_at' => \DB::expr('NOW()'),
-			))
-			->where('id', '=', $card_id)
-			->execute();
-
-		Model_Board::touch($card['board_id']);
+		static::write_and_touch($card['board_id'], function () use ($card_id, $title, $memo) {
+			\DB::update('cards')
+				->set(array(
+					'title'      => $title,
+					'memo'       => $memo,
+					'updated_at' => \DB::expr('NOW()'),
+				))
+				->where('id', '=', $card_id)
+				->execute();
+		});
 	}
 
 	/**
@@ -183,10 +183,56 @@ class Model_Card
 			return;
 		}
 
-		\DB::delete('cards')
-			->where('id', '=', $card_id)
-			->execute();
+		static::write_and_touch($card['board_id'], function () use ($card_id) {
+			\DB::delete('cards')
+				->where('id', '=', $card_id)
+				->execute();
+		});
+	}
 
-		Model_Board::touch($card['board_id']);
+	/**
+	 * ボードをロックしてから $write でカードを書き、ボードの更新日時を変える。1つのトランザクションで行う
+	 *
+	 * touch() だけが失敗すると、カードは変わったのにボード一覧の並び（更新日時の新しい順）が古いまま残るため。
+	 * 権限の確認は呼び出し元で済ませておく（確認と書き込みを分け、それぞれを単独で直せるようにする）。
+	 *
+	 * ロックを先に取るのは、Kanban\CardMover と同じ「ボード → カード」の順に行をロックするため。
+	 * カードを先に書いてから touch() すると、移動と逆の順になり、互いに相手の行を待ってデッドロックになる
+	 * （MySQL の2つの接続で 1213 が起きることを確かめた）。
+	 *
+	 * @param  int      $board_id
+	 * @param  callable $write  カードを書く処理
+	 * @return void
+	 */
+	protected static function write_and_touch($board_id, callable $write)
+	{
+		\DB::start_transaction();
+		try
+		{
+			// 確認の後、ロックを待つ間にボードが削除されていたら、カードも CASCADE で消えているので何もしない
+			if ( ! Model_Board::lock($board_id))
+			{
+				\DB::rollback_transaction(null, false);
+				return;
+			}
+
+			$write();
+			Model_Board::touch($board_id);
+
+			\DB::commit_transaction();
+		}
+		// create() と同じ（理由は Kanban\CardMover::move()）
+		catch (\Throwable $e)
+		{
+			try
+			{
+				\DB::rollback_transaction(null, false);
+			}
+			catch (\Throwable $rollback_error)
+			{
+				\Log::error('ロールバックに失敗した: '.$rollback_error);
+			}
+			throw $e;
+		}
 	}
 }

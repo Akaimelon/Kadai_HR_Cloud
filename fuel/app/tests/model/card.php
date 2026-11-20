@@ -86,6 +86,59 @@ class Test_Model_Card extends TestCase
 		$this->fail('例外が投げられなかった');
 	}
 
+	/**
+	 * boards の UPDATE（Model_Board::touch()）だけが例外を出す接続に差し替えて $fn を実行し、投げられた例外を返す
+	 *
+	 * カードを書いた後に接続が切れたときのように、touch() だけが失敗する状態は本物の DB では作れないため。
+	 * 差し替え方は catch_with_failing_rollback() と同じ
+	 */
+	protected function catch_with_failing_touch(callable $fn)
+	{
+		$name = Config::get('db.active');
+		$real = Database_Connection::$instances[$name];
+		$fake = new class($real) extends Database_MySQLi_Connection {
+			public function __construct(Database_MySQLi_Connection $real)
+			{
+				foreach (get_object_vars($real) as $key => $value)
+				{
+					$this->$key = $value;
+				}
+			}
+
+			public function query($type, $sql, $as_object)
+			{
+				if ($type === DB::UPDATE and strpos($sql, '`boards`') !== false)
+				{
+					throw new RuntimeException('ボードの更新に失敗した（テスト用）');
+				}
+
+				return parent::query($type, $sql, $as_object);
+			}
+
+			public function forget_connection()
+			{
+				$this->_connection = null;
+			}
+		};
+		Database_Connection::$instances[$name] = $fake;
+
+		try
+		{
+			$fn();
+		}
+		catch (Throwable $e)
+		{
+			return $e;
+		}
+		finally
+		{
+			$fake->forget_connection();
+			Database_Connection::$instances[$name] = $real;
+		}
+
+		$this->fail('例外が投げられなかった');
+	}
+
 	public function test_作成したカードを取得できる()
 	{
 		$id = Model_Card::create($this->board_id, $this->user_id, 2, '山田太郎', '経験3年');
@@ -187,6 +240,19 @@ class Test_Model_Card extends TestCase
 		$this->assertSame('山田太郎', Model_Card::find($id, $this->user_id)['title']);
 	}
 
+	public function test_ボードの更新日時を変えられなければ編集を戻す()
+	{
+		$id = Model_Card::create($this->board_id, $this->user_id, 1, '山田太郎', null);
+
+		$e = $this->catch_with_failing_touch(function () use ($id) {
+			Model_Card::update($id, $this->user_id, '書き換え', null);
+		});
+
+		$this->assertInstanceOf(RuntimeException::class, $e);
+		// カードだけが変わると、ボード一覧の並び（更新日時の新しい順）と食い違うため
+		$this->assertSame('山田太郎', Model_Card::find($id, $this->user_id)['title']);
+	}
+
 	public function test_カードを削除できる()
 	{
 		$id = Model_Card::create($this->board_id, $this->user_id, 1, '山田太郎', null);
@@ -194,6 +260,18 @@ class Test_Model_Card extends TestCase
 		Model_Card::delete($id, $this->user_id);
 
 		$this->assertNull(Model_Card::find($id, $this->user_id));
+	}
+
+	public function test_ボードの更新日時を変えられなければ削除を戻す()
+	{
+		$id = Model_Card::create($this->board_id, $this->user_id, 1, '山田太郎', null);
+
+		$e = $this->catch_with_failing_touch(function () use ($id) {
+			Model_Card::delete($id, $this->user_id);
+		});
+
+		$this->assertInstanceOf(RuntimeException::class, $e);
+		$this->assertNotNull(Model_Card::find($id, $this->user_id));
 	}
 
 	public function test_他人のカードは削除されない()
