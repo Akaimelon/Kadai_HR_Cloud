@@ -40,7 +40,8 @@ class CardMover
 				->execute()
 				->get('status_id');
 
-			// 待つ間に削除されていると、消えたカードを入れて移動先の列を振り直し、欠番ができるため
+			// 待つ間に削除されていたら、移動していないのに列を振り直したりボードの更新日時を変えたりせず、
+			// 移動できなかったことを呼び出し元に伝える（404 にする）ため
 			if ($from_status_id === null)
 			{
 				\DB::rollback_transaction(null, false);
