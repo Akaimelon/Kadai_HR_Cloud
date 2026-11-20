@@ -38,6 +38,7 @@ RUN locale-gen ja_JP.UTF-8 && \
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
 
 # Apacheモジュールを有効化
+# headers は public/.htaccess のセキュリティヘッダーに使う。外すと全ページが500になる
 RUN a2enmod rewrite headers
 
 # DocumentRootを変更し、環境変数を設定
