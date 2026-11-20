@@ -113,7 +113,7 @@
 	/**
 	 * 保存の処理（save(request, onSuccess, onFailure)）を作る。
 	 * 保存中に別の操作を受け付けると、画面とサーバーの状態がずれるため、1つずつ送る。
-	 * afterSuccess は、画面ごとに成功のたびにしたいこと（カンバン画面の更新日時など）を渡す
+	 * afterSuccess は、画面ごとに成功のたびにしたいこと（カンバン画面の更新日時など）を渡す。応答の本文を受け取る
 	 */
 	function createSave(saving, toast, afterSuccess) {
 		return function (request, onSuccess, onFailure) {
@@ -130,7 +130,7 @@
 				.then(function (data) {
 					onSuccess(data);
 					if (afterSuccess) {
-						afterSuccess();
+						afterSuccess(data);
 					}
 				}, function (error) { onFailure(error.message); })
 				.finally(function () { saving(false); });
@@ -159,17 +159,6 @@
 		 */
 		formatDateTime: function (value) {
 			return value.slice(5, 7) + '/' + value.slice(8, 10) + ' ' + value.slice(11, 16);
-		},
-
-		/**
-		 * 今の日時を、サーバーが返すのと同じ「2026-11-12 21:40:00」の形にする。
-		 * 保存に成功したとき、再読み込みせずに更新日時の表示を進めるため
-		 */
-		now: function () {
-			const d = new Date();
-			function pad(n) { return (n < 10 ? '0' : '') + n; }
-			return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
-				pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
 		}
 	};
 })();

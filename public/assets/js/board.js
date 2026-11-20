@@ -99,9 +99,13 @@
 		self.confirmation = new KanbanUi.Confirmation();
 		self.toast = new KanbanUi.Toast();
 
-		// カードやボード名を変えるとボードの更新日時も新しくなる（設計書4章）ので、成功したら見出しの表示も進める
-		const save = KanbanUi.createSave(self.saving, self.toast, function () {
-			self.updatedAt(KanbanUi.now());
+		// カードやボード名を変えるとボードの更新日時も新しくなる（設計書4章）ので、成功したら見出しの表示も進める。
+		// ブラウザの時計を使うと、時計やタイムゾーンがサーバーとずれたときに再読み込みの後と表示が変わるため、サーバーが返した値を出す。
+		// ボードの削除は本文がなく、すぐ一覧へ移るので何もしない
+		const save = KanbanUi.createSave(self.saving, self.toast, function (data) {
+			if (data.board) {
+				self.updatedAt(data.board.updated_at);
+			}
 		});
 
 		self.load = function () {

@@ -45,7 +45,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 		}
 
 		// 画面に更新日時を出すため、DBに入った updated_at ごと返す
-		return $this->response(array('card' => $this->found_card_json($id)), 201);
+		return $this->response(array('card' => $this->found_card_json($id), 'board' => $this->found_board_json($board_id)), 201);
 	}
 
 	/**
@@ -53,7 +53,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 	 */
 	public function put_item($id)
 	{
-		$this->ensure_card_accessible($id);
+		$card = $this->ensure_card_accessible($id);
 
 		$val = $this->card_validation();
 		if ( ! $val->run($this->json_strings(array('title', 'memo'))))
@@ -63,7 +63,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 
 		Model_Card::update($id, Guard::user_id(), $val->validated('title'), $this->validated_memo($val));
 
-		return $this->response(array('card' => $this->found_card_json($id)));
+		return $this->response(array('card' => $this->found_card_json($id), 'board' => $this->found_board_json($card['board_id'])));
 	}
 
 	/**
@@ -101,7 +101,7 @@ class Controller_Api_Cards extends Controller_Api_Base
 			throw $this->card_not_found();
 		}
 
-		return $this->response(array('card' => $this->found_card_json($id)));
+		return $this->response(array('card' => $this->found_card_json($id), 'board' => $this->found_board_json($card['board_id'])));
 	}
 
 	/**
@@ -109,10 +109,11 @@ class Controller_Api_Cards extends Controller_Api_Base
 	 */
 	public function delete_item($id)
 	{
-		$this->ensure_card_accessible($id);
+		$card = $this->ensure_card_accessible($id);
 		Model_Card::delete($id, Guard::user_id());
 
-		return $this->response(array(), 204);
+		// 削除でもボードの更新日時が変わり、画面の見出しに出すため、204（本文なし）にせずに返す
+		return $this->response(array('board' => $this->found_board_json($card['board_id'])));
 	}
 
 	/**
@@ -149,14 +150,18 @@ class Controller_Api_Cards extends Controller_Api_Base
 	 * 存在しないカードと他人のカードを区別せず404にするのは、ボードと同じく、そのIDがあること自体を知らせないため
 	 *
 	 * @param  string $id
+	 * @return array  見つかったカード
 	 * @throws HttpJsonException
 	 */
 	protected function ensure_card_accessible($id)
 	{
-		if ( ! Model_Card::find($id, Guard::user_id()))
+		$card = Model_Card::find($id, Guard::user_id());
+		if ( ! $card)
 		{
 			throw $this->card_not_found();
 		}
+
+		return $card;
 	}
 
 	/**
@@ -185,6 +190,25 @@ class Controller_Api_Cards extends Controller_Api_Base
 		}
 
 		return $this->to_json($card);
+	}
+
+	/**
+	 * カードの操作でボードの更新日時も変わるので、画面の見出しにブラウザの時計ではなくDBの値を出せるよう、操作の後に読み直して返す。
+	 * 操作の直後に別のタブでボードが削除されていたら404
+	 *
+	 * @param  int $board_id
+	 * @return array  updated_at
+	 * @throws HttpJsonException
+	 */
+	protected function found_board_json($board_id)
+	{
+		$board = Model_Board::find($board_id, Guard::user_id());
+		if ( ! $board)
+		{
+			throw $this->board_not_found();
+		}
+
+		return array('updated_at' => $board['updated_at']);
 	}
 
 	/**

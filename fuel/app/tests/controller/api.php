@@ -85,6 +85,35 @@ class Test_Controller_Api extends TestCase
 	}
 
 	/**
+	 * カードを操作するとボードの更新日時も変わる。画面の見出しにブラウザの時計ではなくその値を出せるよう、
+	 * どの操作でもボードの updated_at を返すことを確かめる
+	 */
+	public function test_カードの作成・編集・移動・削除はボードの更新日時を返す()
+	{
+		$requests = array(
+			array('POST', 'api/boards/'.$this->board_id.'/cards', '{"title":"応募者","memo":"","status_id":1}', 201),
+			array('PUT', 'api/cards/'.$this->card_id, '{"title":"応募者","memo":""}', 200),
+			array('PUT', 'api/cards/'.$this->card_id.'/move', '{"status_id":2,"sort_order":0}', 200),
+			array('DELETE', 'api/cards/'.$this->card_id, '', 200),
+		);
+
+		foreach ($requests as $request)
+		{
+			list($method, $uri, $body, $status) = $request;
+			// 同じ秒の中では値が変わらず、更新したかを見分けられないため、先に古い日時にしておく
+			DB::update('boards')->value('updated_at', '2000-01-01 00:00:00')->where('id', '=', $this->board_id)->execute();
+
+			$response = $this->send_json_response($method, $uri, $body);
+
+			$this->assertSame($status, $response->status, $method.' '.$uri);
+			$json = json_decode($response->body(), true);
+			$board = Model_Board::find($this->board_id, Guard::user_id());
+			$this->assertNotSame('2000-01-01 00:00:00', $board['updated_at'], $method.' '.$uri);
+			$this->assertSame($board['updated_at'], $json['board']['updated_at'], $method.' '.$uri);
+		}
+	}
+
+	/**
 	 * @param  string $method
 	 * @param  string $uri
 	 * @param  string $body  JSON の本文
@@ -92,15 +121,26 @@ class Test_Controller_Api extends TestCase
 	 */
 	protected function send_json($method, $uri, $body)
 	{
+		return $this->send_json_response($method, $uri, $body)->status;
+	}
+
+	/**
+	 * @param  string $method
+	 * @param  string $uri
+	 * @param  string $body  JSON の本文
+	 * @return Response
+	 */
+	protected function send_json_response($method, $uri, $body)
+	{
 		static::forget_request_state($body);
 
 		try
 		{
-			return Request::forge($uri, true, $method)->execute()->response()->status;
+			return Request::forge($uri, true, $method)->execute()->response();
 		}
 		catch (HttpJsonException $e)
 		{
-			return $e->response()->status;
+			return $e->response();
 		}
 		finally
 		{
