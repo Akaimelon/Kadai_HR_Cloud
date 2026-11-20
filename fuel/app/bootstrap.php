@@ -9,6 +9,8 @@ require COREPATH.'bootstrap.php';
 	'Cookie' => APPPATH.'classes/cookie.php',
 	// API でJSONの本文を確かめるため、Input クラスを変更
 	'Input' => APPPATH.'classes/input.php',
+	// 接続ごとに MySQL のタイムゾーンを設定するため、MySQLi の接続クラスを変更
+	'Database_MySQLi_Connection' => APPPATH.'classes/database/mysqli/connection.php',
 ));
 
 // Register the autoloader
