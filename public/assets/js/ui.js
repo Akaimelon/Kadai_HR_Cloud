@@ -123,15 +123,17 @@
 			saving(true);
 			toast.close();
 
+			// 失敗の処理は then の2つ目に渡し、保存の失敗だけを受け取る。
+			// .catch にすると成功の処理の中の例外まで受け取り、保存できたのにカードを元の位置に戻してしまう。
+			// 成功の処理の例外は握りつぶさず、コンソールに出す（finally は例外をそのまま先へ流す）
 			request()
 				.then(function (data) {
 					onSuccess(data);
 					if (afterSuccess) {
 						afterSuccess();
 					}
-				})
-				.catch(function (error) { onFailure(error.message); })
-				.then(function () { saving(false); });
+				}, function (error) { onFailure(error.message); })
+				.finally(function () { saving(false); });
 		};
 	}
 
