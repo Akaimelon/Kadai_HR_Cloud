@@ -94,7 +94,9 @@
 		}
 
 		return fetch(url, options)
-			.catch(function () {
+			// 画面には決まった文を出すため、CSP や CORS で止められたときなどの元の原因はコンソールに残す
+			.catch(function (error) {
+				console.error(error);
 				throw new Error('通信に失敗しました。ネットワークを確認してください');
 			})
 			.then(function (response) {
