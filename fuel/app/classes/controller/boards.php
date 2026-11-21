@@ -8,6 +8,8 @@ class Controller_Boards extends Controller_Base
 		$this->template->content = \View::forge('boards/index', array(
 			'statuses_json' => json_encode($this->statuses(), JSON_UNESCAPED_UNICODE),
 		));
+
+		return $this->template;
 	}
 
 	/**
@@ -35,6 +37,8 @@ class Controller_Boards extends Controller_Base
 			'statuses'      => $statuses,
 			'statuses_json' => json_encode($statuses, JSON_UNESCAPED_UNICODE),
 		));
+
+		return $this->template;
 	}
 
 	/**

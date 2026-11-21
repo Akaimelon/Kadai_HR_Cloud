@@ -18,7 +18,7 @@ class Controller_Auth extends Controller_Base
 
 	public function get_register()
 	{
-		$this->show_form('auth/register', '新規登録');
+		return $this->show_form('auth/register', '新規登録');
 	}
 
 	public function post_register()
@@ -64,7 +64,7 @@ class Controller_Auth extends Controller_Base
 
 	public function get_login()
 	{
-		$this->show_form('auth/login', 'ログイン');
+		return $this->show_form('auth/login', 'ログイン');
 	}
 
 	public function post_login()
@@ -130,9 +130,10 @@ class Controller_Auth extends Controller_Base
 	/**
 	 * エラー時にパスワードを入力欄に戻さないのは、パスワードを画面のHTMLに書き出さないため
 	 *
-	 * @param string $view
-	 * @param string $title
-	 * @param array  $errors
+	 * @param  string $view
+	 * @param  string $title
+	 * @param  array  $errors
+	 * @return View
 	 */
 	protected function show_form($view, $title, array $errors = array())
 	{
@@ -144,5 +145,7 @@ class Controller_Auth extends Controller_Base
 			'email'  => is_string($email) ? $email : '',
 			'errors' => array_values($errors),
 		));
+
+		return $this->template;
 	}
 }
