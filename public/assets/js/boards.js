@@ -54,13 +54,18 @@
 
 		const save = KanbanUi.createSave(self.saving, self.toast);
 
+		// 失敗の処理は then の2つ目に渡し、読み込みの失敗だけを受け取る（createSave と同じ）。
+		// .catch にすると一覧を作る処理の中の例外まで、英語のメッセージのままトーストに出てしまう。
+		// その例外は受け取らず、ブラウザがコンソールに出すのに任せる
 		self.load = function () {
 			callApi('GET', apiUrl)
 				.then(function (data) {
 					self.boards(data.boards.map(function (board) { return new BoardItem(board); }));
 					self.loaded(true);
-				})
-				.catch(function (error) { self.toast.show(error.message); });
+				}, function (error) {
+					console.error(error);
+					self.toast.show(error.message);
+				});
 		};
 
 		self.addBoard = function () {

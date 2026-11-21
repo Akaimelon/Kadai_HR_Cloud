@@ -108,6 +108,9 @@
 			}
 		});
 
+		// 失敗の処理は then の2つ目に渡し、読み込みの失敗だけを受け取る（createSave と同じ）。
+		// .catch にすると列にカードを積む処理の中の例外まで、英語のメッセージのままトーストに出てしまう。
+		// その例外は受け取らず、ブラウザがコンソールに出すのに任せる
 		self.load = function () {
 			callApi('GET', apiUrl)
 				.then(function (data) {
@@ -115,8 +118,10 @@
 					data.cards.forEach(function (card) {
 						self.columns[card.status_id].cards.push(new CardItem(card));
 					});
-				})
-				.catch(function (error) { self.toast.show(error.message); });
+				}, function (error) {
+					console.error(error);
+					self.toast.show(error.message);
+				});
 		};
 
 		// ---- ボード名の変更・ボードの削除 ----
