@@ -82,7 +82,14 @@
 	 * 呼び出し側が、通信エラーか入力エラーかを区別せずに error.message を表示できるようにするため
 	 */
 	function callApi(method, url, body) {
-		const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+		const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+		// template.php を使わない画面で読み込んだときも、同期の例外にせず reject する。
+		// 同期で投げると呼び出し側の then に届かず、createSave では saving が true のまま戻らなくなるため
+		if (csrfMeta === null) {
+			console.error('<meta name="csrf-token"> がありません。template.php を使う画面で読み込んでください');
+			return Promise.reject(new Error('エラーが発生しました。時間をおいてもう一度お試しください'));
+		}
+		const csrfToken = csrfMeta.getAttribute('content');
 		const options = {
 			method: method,
 			credentials: 'same-origin',
