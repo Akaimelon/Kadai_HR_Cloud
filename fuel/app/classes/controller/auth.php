@@ -45,21 +45,32 @@ class Controller_Auth extends Controller_Base
 
 		if ($user_id === null)
 		{
-			// 登録ボタンのダブルクリックでは、2回目のリクエストが1回目に作ったアカウントと重なる。
-			// 2回目はログイン前のCookieで届くため、ログイン済みかでは見分けられない。
-			// パスワードが合えば本人の再送信とみなしてログインさせ、「登録済み」のエラーを出さない
-			$user = Model_User::authenticate($email, $password);
+			$user_id = $this->resubmitted_user_id($email, $password);
+		}
 
-			if ($user === null)
-			{
-				return $this->show_form('auth/register', '新規登録', array('このメールアドレスはすでに登録されています'));
-			}
-
-			$user_id = $user['id'];
+		if ($user_id === null)
+		{
+			return $this->show_form('auth/register', '新規登録', array('このメールアドレスはすでに登録されています'));
 		}
 
 		Guard::login($user_id);
 		return $this->redirect_to('boards');
+	}
+
+	/**
+	 * 登録ボタンのダブルクリックでは、2回目のリクエストが1回目に作ったアカウントと重なる。
+	 * 2回目はログイン前のCookieで届くため、ログイン済みかでは見分けられない。
+	 * パスワードが合えば本人の再送信とみなし、呼び出し元は「登録済み」のエラーを出さずにログインさせる
+	 *
+	 * @param  string   $email
+	 * @param  string   $password
+	 * @return int|null 本人の再送信ならユーザーID。パスワードが違えば null
+	 */
+	protected function resubmitted_user_id($email, $password)
+	{
+		$user = Model_User::authenticate($email, $password);
+
+		return $user === null ? null : (int) $user['id'];
 	}
 
 	public function get_login()
